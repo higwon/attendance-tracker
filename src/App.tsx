@@ -546,12 +546,11 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">✓</span>나의 출퇴근 기록</div>
         <nav aria-label="주 메뉴">
-          {(["today", "records", "stats"] as const).map((key) => (
+          {(["today", "records", "stats", "account"] as const).map((key) => (
             <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-              {{ today: "오늘", records: "기록", stats: "통계" }[key]}
+              {{ today: "오늘", records: "기록", stats: "통계", account: "계정" }[key]}
             </button>
           ))}
-          <button className={`mobile-account-nav ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>계정</button>
         </nav>
         <div className="account-area">
           <span className="private-badge">● 계정별 비공개</span>
@@ -566,7 +565,7 @@ export default function App() {
         {tab === "records" && <RecordsView todayDate={clock.date} now={clock.time} month={month} records={records} loading={loading} mode={viewMode} onMode={setViewMode} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onAdd={() => openForm()} onAddDate={(date) => openForm(undefined, date)} onEdit={openForm} onDelete={deleteRecord} />}
         {tab === "stats" && <StatsView month={month} stats={stats} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} />}
         {tab === "account" && (
-          <>
+          <div className="account-page">
             <section className="page-heading"><div><p>계정 관리</p><h1>내 계정</h1></div><span className="role-chip">{user.role === "admin" ? "관리자" : "일반 사용자"}</span></section>
             <section className="account-layout deploy-account-layout">
               <form className="settings-card profile-card" onSubmit={saveProfile}>
@@ -597,7 +596,7 @@ export default function App() {
               </div>
             </section>
             <UserManagement currentUserId={user.id} isAdmin={user.role === "admin"} />
-          </>
+          </div>
         )}
       </div>
 

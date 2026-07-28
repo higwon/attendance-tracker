@@ -168,6 +168,16 @@
 .profile-photo-actions label { display: block; width: auto; margin: 0; cursor: pointer; text-align: center; }
 .profile-photo-actions input { display: none; }
 .user-list-card.directory .user-list-header,.user-list-card.directory .user-row { grid-template-columns: 1fr; }
+.account-page { width: min(100%, 1040px); margin: 0 auto; }
+.account-page .page-heading { margin-bottom: 18px; }
+.account-page .page-heading h1 { font-size: 29px; }
+.account-page .deploy-account-layout { grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 16px; }
+.account-page .profile-card { padding: 26px 28px; }
+.account-page .profile-avatar { width: 64px; height: 64px; border-radius: 20px; font-size: 26px; }
+.account-page .profile-copy h2 { margin-top: 12px; font-size: 21px; }
+.account-page .profile-card > label { margin-top: 20px; }
+.account-page .account-info-card { padding: 22px; }
+.account-page .user-list-card { margin-top: 18px; }
 .time-field-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .record-form .time-field-label input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
 .week-chart .bar-item { display: grid; grid-template-rows: 54px minmax(0, 1fr) 28px; }
@@ -186,6 +196,7 @@
 @media (max-width: 900px) {
   .account-area { display: none; }
   .account-layout { grid-template-columns: 1fr; }
+  .account-page .deploy-account-layout { grid-template-columns: 1fr; }
   .invite-card { grid-template-columns: 1fr 1fr; }
   .invite-card > div { grid-column: 1 / -1; }
   .user-list-card { overflow-x: auto; }
