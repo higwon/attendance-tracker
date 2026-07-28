@@ -328,6 +328,7 @@ export default function App() {
   const [form, setForm] = useState<RecordForm>(emptyForm(seoulParts().date));
   const [profileName, setProfileName] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [profileBio, setProfileBio] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -342,6 +343,7 @@ export default function App() {
       setUser(value);
       setProfileName(value.display_name);
       setProfilePhoto(value.profile_photo);
+      setProfileBio(value.bio);
     }).catch(() => setUser(null)).finally(() => setAuthLoading(false));
     const timer = setInterval(() => setClock(seoulParts()), 1_000);
     return () => clearInterval(timer);
@@ -503,10 +505,11 @@ export default function App() {
     event.preventDefault();
     setBusy(true);
     try {
-      await api.updateMe(profileName, profilePhoto);
+      await api.updateMe(profileName, profilePhoto, profileBio);
       const updated = await api.me();
       setUser(updated);
       setProfilePhoto(updated.profile_photo);
+      setProfileBio(updated.bio);
       setToast({ text: "프로필을 저장했습니다." });
     } catch (cause) {
       setToast({ text: cause instanceof Error ? cause.message : "계정 정보를 저장하지 못했습니다.", error: true });
@@ -537,7 +540,7 @@ export default function App() {
   };
 
   if (!mounted || authLoading) return <main className="app-shell loading-shell"><span>나의 출퇴근 기록을 불러오는 중…</span></main>;
-  if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); setProfilePhoto(value.profile_photo); })} />;
+  if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); setProfilePhoto(value.profile_photo); setProfileBio(value.bio); })} />;
 
   const editingRecord = form.id ? allRecords.find((record) => record.Id === form.id) : undefined;
 
@@ -583,6 +586,7 @@ export default function App() {
                   }
                 }} /></label>{profilePhoto && <button type="button" className="secondary" onClick={() => setProfilePhoto(null)}>사진 삭제</button>}</div>
                 <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
+                <label>사용자 설명<textarea value={profileBio} maxLength={120} rows={3} placeholder="소속이나 담당 업무를 간단히 적어보세요." onChange={(event) => setProfileBio(event.target.value)} /></label>
                 <button className="primary" disabled={busy}>변경사항 저장</button>
               </form>
               <div className="settings-stack">
@@ -1036,7 +1040,7 @@ function RecordRow({ record, onEdit, onDelete }: { record: RecordItem; onEdit: (
       <span className={`type type-${record.WorkType}`}>{record.WorkType}</span>
       <div><small>시간</small><b>{recordTimeSummary(record)}</b></div>
       <div><small>반영 근무</small><b>{recordWorkSummary(record)}</b></div>
-      <div><small>추가 시간</small><b>{record.WorkType === "연차" || record.WorkType === "공휴일" ? "-" : record.WorkType === "반차" ? "0분" : !record.CheckOutTime ? "근무 중" : formatWorkDelta(workDuration(record) - 480)}</b></div>
+      <div><small>추가 시간</small><b className={record.WorkType === "반차" || (record.WorkType === "출근" && Boolean(record.CheckOutTime) && workDuration(record) >= 480) ? "record-positive" : ""}>{record.WorkType === "연차" || record.WorkType === "공휴일" ? "-" : record.WorkType === "반차" ? "0분" : !record.CheckOutTime ? "근무 중" : formatWorkDelta(workDuration(record) - 480)}</b></div>
       <div className="row-actions"><button onClick={onEdit}>수정</button><button className="danger" onClick={onDelete}>삭제</button></div>
     </article>
   );
@@ -1295,7 +1299,7 @@ async function prepareProfilePhoto(file: File) {
   return result;
 }
 
-type DirectoryUser = Pick<User, "id" | "username" | "display_name" | "profile_photo"> & Partial<Pick<User, "role" | "is_active">> & {
+type DirectoryUser = Pick<User, "id" | "username" | "display_name" | "profile_photo" | "bio"> & Partial<Pick<User, "role" | "is_active">> & {
   created_at?: string;
   last_login_at?: string | null;
   last_active_at?: string | null;
@@ -1312,13 +1316,13 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
   return (
     <section className={`user-list-card deploy-user-management ${isAdmin ? "admin" : "directory"}`}>
       <div className="user-list-header">
-        <span>사용자</span>{isAdmin && <><span>권한</span><span>상태</span><span>마지막 활동</span></>}
+        <span>사용자</span>{isAdmin && <><span>권한</span><span>마지막 활동</span></>}
       </div>
       {users.map((managedUser) => (
         <article className="user-row" key={managedUser.id}>
           <div className="user-identity">
             <Avatar user={managedUser} />
-            <div><strong>{managedUser.display_name}</strong><small>@{managedUser.username}</small></div>
+            <div><strong>{managedUser.display_name}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
           </div>
           {isAdmin && <><select
             value={managedUser.role}
@@ -1330,17 +1334,6 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
           >
             <option value="user">일반 사용자</option>
             <option value="admin">관리자</option>
-          </select>
-          <select
-            value={managedUser.is_active ? "active" : "inactive"}
-            disabled={managedUser.id === currentUserId}
-            onChange={async (event) => {
-              await api.updateUser(managedUser.id, { isActive: event.target.value === "active" });
-              await load();
-            }}
-          >
-            <option value="active">활성</option>
-            <option value="inactive">비활성</option>
           </select>
           <span className="last-seen">
             {formatLastActive(managedUser.last_active_at ?? null)}

@@ -36,12 +36,12 @@ export const api = {
     }),
   }),
   deleteRecord: (date: string) => request(`/attendance/${date}`, { method: "DELETE" }),
-  updateMe: (displayName: string, profilePhoto: string | null) =>
-    request("/me", { method: "PATCH", body: JSON.stringify({ displayName, profilePhoto }) }),
+  updateMe: (displayName: string, profilePhoto: string | null, bio: string) =>
+    request("/me", { method: "PATCH", body: JSON.stringify({ displayName, profilePhoto, bio }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     request("/me/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
-  directory: () => request<Array<Pick<User, "id" | "username" | "display_name" | "profile_photo">>>("/users"),
+  directory: () => request<Array<Pick<User, "id" | "username" | "display_name" | "profile_photo" | "bio">>>("/users"),
   adminUsers: () => request<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>("/admin/users"),
-  updateUser: (id: string, value: { role?: "user" | "admin"; isActive?: boolean }) =>
+  updateUser: (id: string, value: { role: "user" | "admin" }) =>
     request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(value) }),
 };

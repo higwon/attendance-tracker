@@ -71,13 +71,14 @@ api.post("/auth/logout", requireAuth, async (c) => {
 });
 
 api.get("/me", requireAuth, async (c) => {
-  const profile = await c.env.DB.prepare("SELECT profile_photo FROM users WHERE id = ?")
-    .bind(c.get("user").id).first<{ profile_photo: string | null }>();
-  return c.json({ ...c.get("user"), profile_photo: profile?.profile_photo ?? null });
+  const profile = await c.env.DB.prepare("SELECT profile_photo, bio FROM users WHERE id = ?")
+    .bind(c.get("user").id).first<{ profile_photo: string | null; bio: string }>();
+  return c.json({ ...c.get("user"), profile_photo: profile?.profile_photo ?? null, bio: profile?.bio ?? "" });
 });
 
 const profileInput = z.object({
   displayName: z.string().trim().min(1).max(30),
+  bio: z.string().trim().max(120),
   profilePhoto: z.string().max(300_000).refine(
     isValidProfilePhoto,
     "지원하지 않는 이미지 형식입니다.",
@@ -89,8 +90,8 @@ api.patch("/me", requireAuth, zValidator("json", profileInput, (result, c) => {
   }
 }), async (c) => {
   const input = c.req.valid("json");
-  await c.env.DB.prepare("UPDATE users SET display_name = ?, profile_photo = ? WHERE id = ?")
-    .bind(input.displayName, input.profilePhoto, c.get("user").id).run();
+  await c.env.DB.prepare("UPDATE users SET display_name = ?, profile_photo = ?, bio = ? WHERE id = ?")
+    .bind(input.displayName, input.profilePhoto, input.bio, c.get("user").id).run();
   return c.json({ ok: true });
 });
 
@@ -181,31 +182,26 @@ api.delete("/attendance/:date", requireAuth, async (c) => {
 
 api.get("/users", requireAuth, async (c) => {
   const users = await c.env.DB.prepare(
-    "SELECT id, username, display_name, profile_photo FROM users WHERE is_active = 1 ORDER BY display_name",
+    "SELECT id, username, display_name, profile_photo, bio FROM users WHERE is_active = 1 ORDER BY display_name",
   ).all();
   return c.json(users.results);
 });
 
 api.get("/admin/users", requireAuth, requireAdmin, async (c) => {
   const users = await c.env.DB.prepare(
-    `SELECT id, username, display_name, profile_photo, role, is_active, created_at, last_login_at, last_active_at
+    `SELECT id, username, display_name, profile_photo, bio, role, is_active, created_at, last_login_at, last_active_at
      FROM users ORDER BY created_at`,
   ).all();
   return c.json(users.results);
 });
 
 api.patch("/admin/users/:id", requireAuth, requireAdmin, zValidator("json", z.object({
-  role: z.enum(["user", "admin"]).optional(),
-  isActive: z.boolean().optional(),
+  role: z.enum(["user", "admin"]),
 })), async (c) => {
   const input = c.req.valid("json");
   const targetId = c.req.param("id");
-  if (targetId === c.get("user").id && input.isActive === false) {
-    return c.json({ message: "자기 계정은 비활성화할 수 없습니다." }, 400);
-  }
-  await c.env.DB.prepare(
-    "UPDATE users SET role = COALESCE(?, role), is_active = COALESCE(?, is_active) WHERE id = ?",
-  ).bind(input.role ?? null, input.isActive === undefined ? null : Number(input.isActive), targetId).run();
+  await c.env.DB.prepare("UPDATE users SET role = ? WHERE id = ?")
+    .bind(input.role, targetId).run();
   return c.json({ ok: true });
 });
 
