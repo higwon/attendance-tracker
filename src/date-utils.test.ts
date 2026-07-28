@@ -46,6 +46,7 @@ describe("attendance calculations", () => {
     ], "2026-07-06");
     expect(summary.required).toBe(2400);
     expect(summary.worked).toBe(960);
+    expect(summary.overtime).toBe(0);
   });
 
   it("uses the last working day to make up a weekly shortage", () => {

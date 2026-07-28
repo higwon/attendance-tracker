@@ -100,7 +100,11 @@ export function weeklySummary(records: Attendance[], dateString: string, nowTime
     const record = byDate.get(date);
     return sum + (record ? workedMinutes(record, record.work_date === dateString ? nowTime : undefined) : 0);
   }, 0);
-  return { dates, required, worked, overtime: worked - required };
+  const overtime = dates.reduce((sum, date) => {
+    const record = byDate.get(date);
+    return sum + (record ? overtimeMinutes(record, record.work_date === dateString ? nowTime : undefined) : 0);
+  }, 0);
+  return { dates, required, worked, overtime };
 }
 
 export function checkoutTime(record: Attendance, records: Attendance[]) {

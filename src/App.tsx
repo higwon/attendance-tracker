@@ -229,7 +229,7 @@ function WeeklyMini({ records, today, now }: { records: Attendance[]; today: str
       <div className="section-title"><h2>이번 주 근무</h2><span>8시간 기준</span></div>
       <div className="week-chart">
         {days.map(({ key, record, label, holiday }) => {
-          const special = record?.work_type !== "work" || Boolean(holiday);
+          const special = Boolean(record && record.work_type !== "work") || Boolean(holiday);
           const amount = record ? workedMinutes(record, key === today ? now : undefined) : 0;
           const overtime = record ? overtimeMinutes(record, key === today ? now : undefined) : 0;
           return (
