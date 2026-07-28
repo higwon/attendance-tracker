@@ -110,6 +110,7 @@ api.get("/attendance", requireAuth, async (c) => {
 });
 
 const attendanceInput = z.object({
+  originalWorkDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkInTime: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
   checkOutTime: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
@@ -122,7 +123,7 @@ api.put("/attendance/:date", requireAuth, zValidator("json", attendanceInput), a
   const input = c.req.valid("json");
   if (input.workDate !== c.req.param("date")) return c.json({ message: "날짜가 일치하지 않습니다." }, 400);
   const now = new Date().toISOString();
-  await c.env.DB.prepare(
+  const upsert = c.env.DB.prepare(
     `INSERT INTO attendance
       (id, user_id, work_date, check_in_time, check_out_time, break_minutes, work_type, memo, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -136,7 +137,20 @@ api.put("/attendance/:date", requireAuth, zValidator("json", attendanceInput), a
   ).bind(
     crypto.randomUUID(), c.get("user").id, input.workDate, input.checkInTime, input.checkOutTime,
     input.breakMinutes, input.workType, input.memo, now, now,
-  ).run();
+  );
+  if (input.originalWorkDate && input.originalWorkDate !== input.workDate) {
+    const occupied = await c.env.DB.prepare(
+      "SELECT 1 FROM attendance WHERE user_id = ? AND work_date = ?",
+    ).bind(c.get("user").id, input.workDate).first();
+    if (occupied) return c.json({ message: "변경하려는 날짜에 이미 기록이 있습니다." }, 409);
+    await c.env.DB.batch([
+      upsert,
+      c.env.DB.prepare("DELETE FROM attendance WHERE user_id = ? AND work_date = ?")
+        .bind(c.get("user").id, input.originalWorkDate),
+    ]);
+  } else {
+    await upsert.run();
+  }
   return c.json({ ok: true });
 });
 

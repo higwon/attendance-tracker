@@ -3,10 +3,10 @@ import { isHoliday } from "korean-holidays";
 import { api } from "./api";
 import type { Attendance, User, WorkType as ApiWorkType } from "./types";
 
-type WorkType = "출근" | "연차" | "반차";
+export type WorkType = "출근" | "연차" | "반차" | "공휴일";
 type Tab = "today" | "records" | "stats" | "account";
 
-type RecordItem = {
+export type RecordItem = {
   Id: string;
   WorkDate: string;
   CheckInTime: string | null;
@@ -28,9 +28,9 @@ type RecordForm = {
 };
 
 const toUiType = (value: ApiWorkType): WorkType =>
-  value === "annual" ? "연차" : value === "half" ? "반차" : "출근";
+  value === "annual" ? "연차" : value === "half" ? "반차" : value === "holiday" ? "공휴일" : "출근";
 const toApiType = (value: WorkType): ApiWorkType =>
-  value === "연차" ? "annual" : value === "반차" ? "half" : "work";
+  value === "연차" ? "annual" : value === "반차" ? "half" : value === "공휴일" ? "holiday" : "work";
 
 const toRecordItem = (record: Attendance): RecordItem => ({
   Id: record.id ?? record.work_date,
@@ -68,6 +68,7 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <main className="auth-page">
+      {error && <div role="alert" className="toast error"><strong>{register ? "회원가입 실패" : "로그인 실패"}</strong><span>{error}</span></div>}
       <section className="auth-card">
         <span className="auth-logo">✓</span>
         <h1>나의 출퇴근 기록</h1>
@@ -75,8 +76,7 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
         <form onSubmit={submit}>
           {register && <label>이름<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>}
           <label>아이디<input value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
-          <label>비밀번호<input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          {error && <p className="form-error">{error}</p>}
+          <label>비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
           <button className="primary" disabled={busy}>{busy ? "처리 중…" : register ? "회원가입" : "로그인"}</button>
         </form>
         <button className="auth-switch" onClick={() => { setRegister(!register); setError(""); }}>
@@ -120,9 +120,9 @@ function minutesToTime(value: number) {
   return `${pad(Math.floor(normalized / 60))}:${pad(normalized % 60)}`;
 }
 
-function workDuration(record?: RecordItem, now?: string) {
+export function workDuration(record?: RecordItem, now?: string) {
   if (record?.WorkType === "반차") return 240;
-  if (record?.WorkType === "연차") return 0;
+  if (record?.WorkType === "연차" || record?.WorkType === "공휴일") return 0;
   if (!record?.CheckInTime) return 0;
   const end = record.CheckOutTime ?? now;
   if (!end) return 0;
@@ -189,19 +189,28 @@ function getWeekDates(todayDate: string) {
   return WEEKDAYS.map((_, index) => dateKey(new Date(monday.getTime() + index * DAY_MS)));
 }
 
+function getMonthBoundaryRange(month: string) {
+  const [year, selectedMonth] = month.split("-").map(Number);
+  const first = new Date(Date.UTC(year, selectedMonth - 1, 1));
+  const last = new Date(Date.UTC(year, selectedMonth, 0));
+  const from = new Date(first.getTime() - ((first.getUTCDay() + 6) % 7) * DAY_MS);
+  const to = new Date(last.getTime() + (7 - last.getUTCDay()) % 7 * DAY_MS);
+  return { from: dateKey(from), to: dateKey(to) };
+}
+
 function holidayName(date: string) {
   const [year, month, day] = date.split("-").map(Number);
   return isHoliday(new Date(year, month - 1, day))?.nameKo ?? null;
 }
 
 function recordTimeSummary(record: RecordItem) {
-  if (record.WorkType === "연차") return "시간 입력 없음";
+  if (record.WorkType === "연차" || record.WorkType === "공휴일") return "시간 입력 없음";
   if (record.WorkType === "반차") return "4시간 자동 반영";
   return `${record.CheckInTime ?? "--:--"} — ${record.CheckOutTime ?? "--:--"}`;
 }
 
 function recordWorkSummary(record: RecordItem) {
-  if (record.WorkType === "연차") return "-";
+  if (record.WorkType === "연차" || record.WorkType === "공휴일") return "-";
   if (record.WorkType === "반차") return "4시간 0분";
   return record.CheckInTime && record.CheckOutTime ? formatDuration(workDuration(record)) : "-";
 }
@@ -218,7 +227,7 @@ function emptyForm(date: string): RecordForm {
   };
 }
 
-function getWeeklySummary(records: RecordItem[], todayDate: string, now: string) {
+export function getWeeklySummary(records: RecordItem[], todayDate: string, now: string) {
   const dates = getWeekDates(todayDate);
   const recordsByDate = new Map(records.map((record) => [record.WorkDate, record]));
   const includedRecords = dates
@@ -229,6 +238,7 @@ function getWeeklySummary(records: RecordItem[], todayDate: string, now: string)
         record.CheckOutTime
         || record.WorkType === "반차"
         || record.WorkType === "연차"
+        || record.WorkType === "공휴일"
         || (record.WorkDate === todayDate && record.CheckInTime)
       ),
     ));
@@ -244,7 +254,7 @@ function getWeeklySummary(records: RecordItem[], todayDate: string, now: string)
   dates.forEach((date) => {
     const record = recordsByDate.get(date);
     let target = 480;
-    if (holidayName(date) || record?.WorkType === "연차") target = 0;
+    if (holidayName(date) || record?.WorkType === "연차" || record?.WorkType === "공휴일") target = 0;
     else if (record?.WorkType === "반차") target = 240;
     targetByDate.set(date, target);
   });
@@ -268,7 +278,7 @@ function getWeeklySummary(records: RecordItem[], todayDate: string, now: string)
     .filter((date) => date < todayDate)
     .map((date) => recordsByDate.get(date))
     .filter((record): record is RecordItem => Boolean(
-      record && (record.CheckOutTime || record.WorkType === "반차" || record.WorkType === "연차"),
+      record && (record.CheckOutTime || record.WorkType === "반차" || record.WorkType === "연차" || record.WorkType === "공휴일"),
     ))
     .reduce((sum, record) => sum + workDuration(record), 0);
   const todayTarget = targetByDate.get(todayDate) ?? 480;
@@ -344,14 +354,21 @@ export default function App() {
     if (!user) return;
     setLoading(true);
     try {
-      const data = await api.records("0000-01-01", "9999-12-31");
-      setAllRecords(data.map(toRecordItem));
+      const monthRange = getMonthBoundaryRange(month);
+      const weekDates = getWeekDates(clock.date);
+      const ranges = monthRange.from <= weekDates[0] && monthRange.to >= weekDates[4]
+        ? [monthRange]
+        : [monthRange, { from: weekDates[0], to: weekDates[4] }];
+      const responses = await Promise.all(ranges.map((range) => api.records(range.from, range.to)));
+      const unique = new Map<string, Attendance>();
+      responses.flat().forEach((record) => unique.set(record.work_date, record));
+      setAllRecords([...unique.values()].sort((a, b) => a.work_date.localeCompare(b.work_date)).map(toRecordItem));
     } catch (cause) {
       setToast({ text: cause instanceof Error ? cause.message : "기록을 불러오지 못했습니다.", error: true });
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, month, clock.date]);
 
   useEffect(() => {
     if (user) void load();
@@ -371,6 +388,9 @@ export default function App() {
   const saveRecord = async (record: RecordForm) => {
     setBusy(true);
     try {
+      const originalWorkDate = record.id
+        ? allRecords.find((item) => item.Id === record.id)?.WorkDate
+        : undefined;
       await api.saveRecord({
         id: record.id || undefined,
         work_date: record.workDate,
@@ -379,7 +399,7 @@ export default function App() {
         break_minutes: record.breakMinutes,
         work_type: toApiType(record.workType),
         memo: record.memo,
-      });
+      }, originalWorkDate);
       setToast({ text: "기록을 저장했습니다." });
       await load();
       setModal(null);
@@ -544,8 +564,8 @@ export default function App() {
               <div className="settings-stack">
                 <form className="settings-card account-info-card password-card" onSubmit={changePassword}>
                   <h2>비밀번호 변경</h2>
-                  <label>현재 비밀번호<input type="password" minLength={8} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
-                  <label>새 비밀번호<input type="password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
+                  <label>현재 비밀번호<input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
+                  <label>새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
                   <button className="primary" disabled={busy}>비밀번호 변경</button>
                 </form>
                 <button className="settings-card signout-card" onClick={logout}><span>로그아웃</span><b>›</b></button>
@@ -562,7 +582,7 @@ export default function App() {
         <Modal title={form.id ? "기록 상세" : "기록 추가"} onClose={() => setModal(null)}>
           <form className="record-form" onSubmit={submitForm}>
             <label>근무 날짜<input type="date" required value={form.workDate} onChange={(event) => setForm({ ...form, workDate: event.target.value })} /></label>
-            <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}</select></label>
+            <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}{form.workType === "공휴일" && <option value="공휴일" disabled>공휴일(자동)</option>}</select></label>
             {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div>}
             <label>휴게 시간 (분)<input type="number" min="0" max="240" step="5" value={form.breakMinutes} onChange={(event) => setForm({ ...form, breakMinutes: Number(event.target.value) })} /></label>
             <label>메모<textarea rows={3} placeholder="오늘의 업무나 특이사항을 적어보세요." value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} /></label>
@@ -594,12 +614,14 @@ function TodayView({
 }) {
   const checkedIn = Boolean(today?.CheckInTime);
   const done = Boolean(today?.CheckOutTime);
-  const isLeaveDay = today?.WorkType === "연차" || today?.WorkType === "반차";
+  const isLeaveDay = today?.WorkType === "연차" || today?.WorkType === "반차" || today?.WorkType === "공휴일";
   const holiday = holidayName(clock.date);
   const weekday = toUtcDate(clock.date).getUTCDay();
   const isWeekend = weekday === 0 || weekday === 6;
   const dayOff = today?.WorkType === "연차"
     ? { title: "오늘은 연차예요", detail: "업무에서 잠시 벗어나 편안한 하루 보내세요.", kind: "annual" }
+    : today?.WorkType === "공휴일"
+      ? { title: "오늘은 공휴일이에요", detail: "오늘은 출퇴근 기록이 필요 없는 공휴일이에요.", kind: "holiday" }
     : holiday
       ? { title: `오늘은 ${holiday}이에요`, detail: "오늘은 출퇴근 기록이 필요 없는 공휴일이에요.", kind: "holiday" }
       : isWeekend
@@ -627,8 +649,8 @@ function TodayView({
               <p>{dayOff.detail}</p>
             </div>
           </div>
-          {today?.WorkType === "연차" && (
-            <button className="day-off-edit" onClick={onEdit}>연차 기록 보기</button>
+          {(today?.WorkType === "연차" || today?.WorkType === "공휴일") && (
+            <button className="day-off-edit" onClick={onEdit}>{today.WorkType} 기록 보기</button>
           )}
         </section>
       ) : (
@@ -738,6 +760,9 @@ function WeekChart({ records, todayDate, now }: { records: RecordItem[]; todayDa
     if (record?.WorkType === "연차") {
       return { work: 0, overtime: 0, leave: 0, label: "연차", detail: "연차", delta: null, status: null, dayOff: true };
     }
+    if (record?.WorkType === "공휴일") {
+      return { work: 0, overtime: 0, leave: 0, label: "공휴일", detail: "공휴일", delta: null, status: null, dayOff: true };
+    }
     if (record?.WorkType === "반차") {
       return { work: 240, overtime: 0, leave: 240, label: "04시간 00분", detail: "반차", delta: 0, status: null, dayOff: false };
     }
@@ -815,7 +840,7 @@ function WeekChart({ records, todayDate, now }: { records: RecordItem[]; todayDa
   );
 }
 
-function getMonthlyStats(allRecords: RecordItem[], month: string, todayDate: string) {
+export function getMonthlyStats(allRecords: RecordItem[], month: string, todayDate: string) {
   const records = allRecords.filter((record) => record.WorkDate.startsWith(`${month}-`));
   const timedRecords = records.filter((record) => record.CheckInTime);
   const total = records.reduce((sum, record) => sum + workDuration(record), 0);
@@ -824,7 +849,7 @@ function getMonthlyStats(allRecords: RecordItem[], month: string, todayDate: str
     if (!values.length) return "--:--";
     return minutesToTime(Math.round(values.reduce((sum, value) => sum + value, 0) / values.length));
   };
-  const counts: Record<WorkType, number> = { 출근: 0, 반차: 0, 연차: 0 };
+  const counts: Record<WorkType, number> = { 출근: 0, 반차: 0, 연차: 0, 공휴일: 0 };
   records.forEach((record) => counts[record.WorkType]++);
 
   const [year, selectedMonth] = month.split("-").map(Number);
@@ -855,7 +880,7 @@ function getMonthlyStats(allRecords: RecordItem[], month: string, todayDate: str
     for (let index = 0; index < 5; index++) {
       const workDate = dateKey(new Date(weekStart.getTime() + index * DAY_MS));
       const record = recordsByDate.get(workDate);
-      if (holidayName(workDate) || record?.WorkType === "연차") continue;
+      if (holidayName(workDate) || record?.WorkType === "연차" || record?.WorkType === "공휴일") continue;
       weekTarget += record?.WorkType === "반차" ? 240 : 480;
     }
     const state = end < todayDate ? "done" : start <= todayDate ? "current" : "upcoming";
@@ -1043,8 +1068,8 @@ function Calendar({
                 <>
                   <i className={`type type-${record.WorkType}`}>{record.WorkType}</i>
                   <small>{recordTimeSummary(record)}</small>
-                  {record.WorkType === "연차" ? (
-                    <strong className="calendar-work-summary leave">연차</strong>
+                  {record.WorkType === "연차" || record.WorkType === "공휴일" ? (
+                    <strong className="calendar-work-summary leave">{record.WorkType}</strong>
                   ) : (
                     <strong className="calendar-work-summary">
                       <span>{formatDuration(workMinutes)}</span>

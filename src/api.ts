@@ -23,10 +23,11 @@ export const api = {
     request("/auth/register", { method: "POST", body: JSON.stringify({ username, displayName, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
   records: (from: string, to: string) => request<Attendance[]>(`/attendance?from=${from}&to=${to}`),
-  saveRecord: (record: Attendance) => request(`/attendance/${record.work_date}`, {
+  saveRecord: (record: Attendance, originalWorkDate?: string) => request(`/attendance/${record.work_date}`, {
     method: "PUT",
     body: JSON.stringify({
       workDate: record.work_date,
+      originalWorkDate,
       checkInTime: record.check_in_time,
       checkOutTime: record.check_out_time,
       breakMinutes: record.break_minutes,
