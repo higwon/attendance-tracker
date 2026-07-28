@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { clearSession, createSession, hashPassword, requireAdmin, requireAuth, verifyPassword } from "./auth";
 import type { Bindings, Variables } from "./types";
+import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const api = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -122,6 +123,8 @@ const attendanceInput = z.object({
 api.put("/attendance/:date", requireAuth, zValidator("json", attendanceInput), async (c) => {
   const input = c.req.valid("json");
   if (input.workDate !== c.req.param("date")) return c.json({ message: "날짜가 일치하지 않습니다." }, 400);
+  const blockedReason = getBlockedWorkDateReason(input.workDate);
+  if (blockedReason) return c.json({ message: blockedReason }, 400);
   const now = new Date().toISOString();
   const upsert = c.env.DB.prepare(
     `INSERT INTO attendance

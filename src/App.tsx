@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { isHoliday } from "korean-holidays";
+import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 import { api } from "./api";
 import type { Attendance, User, WorkType as ApiWorkType } from "./types";
 
@@ -464,6 +465,11 @@ export default function App() {
   };
 
   const openForm = (record?: RecordItem, date = clock.date) => {
+    const blockedReason = !record && getBlockedWorkDateReason(date);
+    if (blockedReason) {
+      setToast({ text: blockedReason, error: true });
+      return;
+    }
     setForm(record ? {
       id: record.Id,
       workDate: record.WorkDate,
@@ -478,6 +484,11 @@ export default function App() {
 
   const submitForm = async (event: FormEvent) => {
     event.preventDefault();
+    const blockedReason = getBlockedWorkDateReason(form.workDate);
+    if (blockedReason) {
+      setToast({ text: blockedReason, error: true });
+      return;
+    }
     await saveRecord(form);
   };
 
@@ -581,7 +592,15 @@ export default function App() {
       {modal === "form" && (
         <Modal title={form.id ? "기록 상세" : "기록 추가"} onClose={() => setModal(null)}>
           <form className="record-form" onSubmit={submitForm}>
-            <label>근무 날짜<input type="date" required value={form.workDate} onChange={(event) => setForm({ ...form, workDate: event.target.value })} /></label>
+            <label>근무 날짜<input type="date" required value={form.workDate} onChange={(event) => {
+              const workDate = event.target.value;
+              const blockedReason = getBlockedWorkDateReason(workDate);
+              if (blockedReason) {
+                setToast({ text: blockedReason, error: true });
+                return;
+              }
+              setForm({ ...form, workDate });
+            }} /></label>
             <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}{form.workType === "공휴일" && <option value="공휴일" disabled>공휴일(자동)</option>}</select></label>
             {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div>}
             <label>휴게 시간 (분)<input type="number" min="0" max="240" step="5" value={form.breakMinutes} onChange={(event) => setForm({ ...form, breakMinutes: Number(event.target.value) })} /></label>
@@ -1042,6 +1061,7 @@ function Calendar({
           const holiday = holidayName(key);
           const isToday = key === todayDate;
           const weekday = (firstDay + day - 1) % 7;
+          const blocked = !record && (weekday === 0 || weekday === 6 || Boolean(holiday));
           const weekendClass = weekday === 0 ? "sunday-cell " : weekday === 6 ? "saturday-cell " : "";
           const accessibleName = record
             ? `${formatDateWithWeekday(key)} 기록 상세`
@@ -1059,6 +1079,7 @@ function Calendar({
             <button
               key={key}
               aria-label={accessibleName}
+              disabled={blocked}
               className={`${record ? "has-record " : "empty-date "}${isToday ? "today-cell " : ""}${weekendClass}${holiday ? "holiday-cell" : ""}`}
               onClick={() => record ? onEdit(record) : onAddDate(key)}
             >
