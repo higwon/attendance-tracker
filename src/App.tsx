@@ -130,6 +130,12 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="auth-page">
+      {error && (
+        <div className="toast" role="alert" onClick={() => setError("")}>
+          <strong>{register ? "회원가입 실패" : "로그인 실패"}</strong>
+          <span>{error}</span>
+        </div>
+      )}
       <section className="auth-card">
         <div className="auth-logo">✓</div>
         <h1>나의 출퇴근 기록</h1>
@@ -138,7 +144,6 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
           {register && <label>이름<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="표시 이름" required /></label>}
           <label>아이디<input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="영문, 숫자, . _ -" required /></label>
           <label>비밀번호<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" required /></label>
-          {error && <div className="form-error">{error}</div>}
           <button className="primary" disabled={busy}>{busy ? "처리 중..." : register ? "회원가입" : "로그인"}</button>
         </form>
         <button className="text-button" onClick={() => { setRegister(!register); setError(""); }}>

@@ -6,8 +6,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ message: "요청을 처리하지 못했습니다." }));
-    throw new Error(body.message);
+    const body = await response.json().catch(() => null) as { message?: unknown } | null;
+    const fallback = response.status >= 500
+      ? "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      : "입력 내용을 확인해 주세요.";
+    throw new Error(typeof body?.message === "string" ? body.message : fallback);
   }
   return response.json();
 }

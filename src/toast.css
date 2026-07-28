@@ -1,0 +1,14 @@
+.toast {
+  display: grid;
+  gap: 3px;
+  max-width: min(380px, calc(100vw - 40px));
+  cursor: pointer;
+}
+
+.toast strong {
+  font-size: 14px;
+}
+
+.toast span {
+  font-size: 13px;
+}

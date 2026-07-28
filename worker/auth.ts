@@ -3,7 +3,9 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppUser, Bindings, Variables } from "./types";
 
 const encoder = new TextEncoder();
-const ITERATIONS = 210_000;
+// Keep password hashing within the Workers CPU budget. The salt remains unique
+// per password and SHA-256 output is compared in constant time below.
+const ITERATIONS = 50_000;
 
 function toHex(bytes: ArrayBuffer | Uint8Array) {
   return [...new Uint8Array(bytes)].map((value) => value.toString(16).padStart(2, "0")).join("");

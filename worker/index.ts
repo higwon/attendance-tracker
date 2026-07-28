@@ -7,6 +7,11 @@ import type { Bindings, Variables } from "./types";
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const api = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+app.onError((error, c) => {
+  console.error("Unhandled request error", error);
+  return c.json({ message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." }, 500);
+});
+
 const credentials = z.object({
   username: z.string().trim().min(4).max(40).regex(/^[a-zA-Z0-9._-]+$/),
   password: z.string().min(1).max(72),
