@@ -137,7 +137,7 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
         <form onSubmit={submit}>
           {register && <label>이름<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="표시 이름" required /></label>}
           <label>아이디<input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="영문, 숫자, . _ -" required /></label>
-          <label>비밀번호<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} placeholder="8자 이상" required /></label>
+          <label>비밀번호<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" required /></label>
           {error && <div className="form-error">{error}</div>}
           <button className="primary" disabled={busy}>{busy ? "처리 중..." : register ? "회원가입" : "로그인"}</button>
         </form>
@@ -391,7 +391,7 @@ function Account({ user, refresh, logout }: { user: User; refresh: () => Promise
         <section className="card">
           <div className="section-title"><h2>비밀번호 변경</h2></div>
           <label>현재 비밀번호<input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /></label>
-          <label>새 비밀번호<input type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></label>
+          <label>새 비밀번호<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></label>
           <button className="secondary" onClick={changePassword}>비밀번호 변경</button>
           <button className="logout" onClick={logout}><LogOut size={18} /> 로그아웃</button>
         </section>

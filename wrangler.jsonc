@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "attendance-tracker",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "ce0e1273-3156-48b5-8673-272d54d0eecc",
       "migrations_dir": "migrations"
     }
   ]

@@ -9,7 +9,7 @@ const api = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 const credentials = z.object({
   username: z.string().trim().min(4).max(40).regex(/^[a-zA-Z0-9._-]+$/),
-  password: z.string().min(8).max(72),
+  password: z.string().min(1).max(72),
 });
 
 api.post("/auth/register", zValidator("json", credentials.extend({
@@ -73,8 +73,8 @@ api.patch("/me", requireAuth, zValidator("json", z.object({
 });
 
 api.patch("/me/password", requireAuth, zValidator("json", z.object({
-  currentPassword: z.string().min(8).max(72),
-  newPassword: z.string().min(8).max(72),
+  currentPassword: z.string().min(1).max(72),
+  newPassword: z.string().min(1).max(72),
 })), async (c) => {
   const input = c.req.valid("json");
   const userId = c.get("user").id;
