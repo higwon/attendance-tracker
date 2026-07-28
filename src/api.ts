@@ -40,7 +40,7 @@ export const api = {
     request("/me", { method: "PATCH", body: JSON.stringify({ displayName }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     request("/me/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
-  users: () => request<Array<User & { created_at: string; last_login_at: string | null }>>("/admin/users"),
+  users: () => request<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>("/admin/users"),
   updateUser: (id: string, value: { role?: "user" | "admin"; isActive?: boolean }) =>
     request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(value) }),
 };

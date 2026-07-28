@@ -9,6 +9,7 @@ export type AppUser = {
   display_name: string;
   role: "user" | "admin";
   is_active: number;
+  last_active_at: string | null;
 };
 
 export type Variables = {

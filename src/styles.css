@@ -157,6 +157,10 @@
 .calendar-work-summary em.working { background: #eef2ff; color: #4f46e5; }
 .time-24-field { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
 .time-24-field b { color: var(--muted); font-size: 18px; }
+.checkout-field { display: grid; gap: 7px; }
+.record-form .checkout-toggle { display: flex; grid-template-columns: none; align-items: center; gap: 7px; }
+.record-form .checkout-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
+.time-24-field select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
 .week-chart .bar-item { display: grid; grid-template-rows: 54px minmax(0, 1fr) 28px; }
 .bar-plot { position: relative; width: 100%; height: 100%; }
 .bar-plot > .stacked-bar { position: absolute; bottom: 0; left: 14%; display: flex; flex-direction: column; justify-content: flex-end; width: 72%; min-height: 2px; overflow: hidden; border-radius: 5px 5px 0 0; background: transparent; }

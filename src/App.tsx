@@ -23,7 +23,7 @@ type RecordForm = {
   workDate: string;
   checkInTime: string;
   checkOutTime: string;
-  breakMinutes: number;
+  includeCheckOut: boolean;
   workType: WorkType;
   memo: string;
 };
@@ -144,7 +144,7 @@ function formatSignedDuration(value: number) {
 }
 
 function formatWorkDelta(value: number) {
-  if (value === 0) return "기준 충족";
+  if (value === 0) return "0분";
   const absolute = Math.abs(value);
   const hours = Math.floor(absolute / 60);
   const minutes = absolute % 60;
@@ -222,7 +222,7 @@ function emptyForm(date: string): RecordForm {
     workDate: date,
     checkInTime: "09:00",
     checkOutTime: "18:00",
-    breakMinutes: 60,
+    includeCheckOut: false,
     workType: "출근",
     memo: "",
   };
@@ -396,8 +396,8 @@ export default function App() {
         id: record.id || undefined,
         work_date: record.workDate,
         check_in_time: record.workType === "출근" ? record.checkInTime || null : null,
-        check_out_time: record.workType === "출근" ? record.checkOutTime || null : null,
-        break_minutes: record.breakMinutes,
+        check_out_time: record.workType === "출근" && record.includeCheckOut ? record.checkOutTime || null : null,
+        break_minutes: 60,
         work_type: toApiType(record.workType),
         memo: record.memo,
       }, originalWorkDate);
@@ -457,7 +457,7 @@ export default function App() {
         workDate: next.WorkDate,
         checkInTime: next.CheckInTime ?? "",
         checkOutTime: next.CheckOutTime ?? "",
-        breakMinutes: next.BreakMinutes,
+        includeCheckOut: Boolean(next.CheckOutTime),
         workType: next.WorkType,
         memo: next.Memo,
       });
@@ -475,7 +475,7 @@ export default function App() {
       workDate: record.WorkDate,
       checkInTime: record.CheckInTime ?? "",
       checkOutTime: record.CheckOutTime ?? "",
-      breakMinutes: record.BreakMinutes,
+      includeCheckOut: Boolean(record.CheckOutTime),
       workType: record.WorkType,
       memo: record.Memo,
     } : emptyForm(date));
@@ -602,8 +602,7 @@ export default function App() {
               setForm({ ...form, workDate });
             }} /></label>
             <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}{form.workType === "공휴일" && <option value="공휴일" disabled>공휴일(자동)</option>}</select></label>
-            {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div>}
-            <label>휴게 시간 (분)<input type="number" min="0" max="240" step="5" value={form.breakMinutes} onChange={(event) => setForm({ ...form, breakMinutes: Number(event.target.value) })} /></label>
+            {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><div className="checkout-field"><label className="checkout-toggle"><input type="checkbox" checked={form.includeCheckOut} onChange={(event) => setForm({ ...form, includeCheckOut: event.target.checked })} /> 퇴근시간 입력</label><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} disabled={!form.includeCheckOut} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div></div>}
             <label>메모<textarea rows={3} placeholder="오늘의 업무나 특이사항을 적어보세요." value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} /></label>
             <div className={`modal-actions ${editingRecord ? "split" : ""}`}>{editingRecord && <button type="button" className="delete-record" onClick={() => deleteRecord(editingRecord)}>기록 삭제</button>}<span className="action-group"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className="primary" disabled={busy}>{busy ? "저장 중…" : "저장"}</button></span></div>
           </form>
@@ -1188,10 +1187,12 @@ function StatsView({
 function TimeField({
   label,
   value,
+  disabled = false,
   onChange,
 }: {
   label: string;
   value: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   const [hour = "00", minute = "00"] = value.split(":");
@@ -1204,6 +1205,7 @@ function TimeField({
       <span className="time-24-field">
         <select
           aria-label={`${label} 시`}
+          disabled={disabled}
           value={hour}
           onChange={(event) => onChange(`${event.target.value}:${minute}`)}
         >
@@ -1212,6 +1214,7 @@ function TimeField({
         <b>:</b>
         <select
           aria-label={`${label} 분`}
+          disabled={disabled}
           value={minute}
           onChange={(event) => onChange(`${hour}:${event.target.value}`)}
         >
@@ -1233,8 +1236,22 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+function formatLastActive(value: string | null) {
+  if (!value) return "아직 없음";
+  const date = new Date(value);
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60_000));
+  if (elapsedMinutes < 1) return "방금 전";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}분 전`;
+  if (elapsedMinutes < 24 * 60) return `${Math.floor(elapsedMinutes / 60)}시간 전`;
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 function UserManagement({ currentUserId }: { currentUserId: string }) {
-  const [users, setUsers] = useState<Array<User & { created_at: string; last_login_at: string | null }>>([]);
+  const [users, setUsers] = useState<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>([]);
   const load = useCallback(() => api.users().then(setUsers), []);
 
   useEffect(() => {
@@ -1244,7 +1261,7 @@ function UserManagement({ currentUserId }: { currentUserId: string }) {
   return (
     <section className="user-list-card deploy-user-management">
       <div className="user-list-header">
-        <span>사용자</span><span>권한</span><span>상태</span><span>최근 접속</span>
+        <span>사용자</span><span>권한</span><span>상태</span><span>마지막 활동</span>
       </div>
       {users.map((managedUser) => (
         <article className="user-row" key={managedUser.id}>
@@ -1275,9 +1292,7 @@ function UserManagement({ currentUserId }: { currentUserId: string }) {
             <option value="inactive">비활성</option>
           </select>
           <span className="last-seen">
-            {managedUser.last_login_at
-              ? new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium" }).format(new Date(managedUser.last_login_at))
-              : "아직 없음"}
+            {formatLastActive(managedUser.last_active_at)}
           </span>
         </article>
       ))}

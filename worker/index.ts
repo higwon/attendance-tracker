@@ -57,8 +57,9 @@ api.post("/auth/login", zValidator("json", credentials), async (c) => {
     return c.json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." }, 401);
   }
   if (!user.is_active) return c.json({ message: "비활성화된 계정입니다." }, 403);
-  await c.env.DB.prepare("UPDATE users SET last_login_at = ? WHERE id = ?")
-    .bind(new Date().toISOString(), user.id).run();
+  const loginAt = new Date().toISOString();
+  await c.env.DB.prepare("UPDATE users SET last_login_at = ?, last_active_at = ? WHERE id = ?")
+    .bind(loginAt, loginAt, user.id).run();
   await createSession(c, user.id);
   return c.json({ ok: true });
 });
@@ -165,7 +166,7 @@ api.delete("/attendance/:date", requireAuth, async (c) => {
 
 api.get("/admin/users", requireAuth, requireAdmin, async (c) => {
   const users = await c.env.DB.prepare(
-    `SELECT id, username, display_name, role, is_active, created_at, last_login_at
+    `SELECT id, username, display_name, role, is_active, created_at, last_login_at, last_active_at
      FROM users ORDER BY created_at`,
   ).all();
   return c.json(users.results);
