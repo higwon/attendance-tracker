@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays, ChartNoAxesColumnIncreasing, Clock3, LogOut, Settings, UserRound,
 } from "lucide-react";
 import { api } from "./api";
-import { dateRangeForMonth, formatDuration, localDate, overtimeMinutes, workedMinutes } from "./date-utils";
+import {
+  addDays, checkoutTime, dateRangeForMonth, formatDuration, holidayName, isNonWorkingDate,
+  localDate, minutesOf, overtimeMinutes, timeOf, weeklySummary, workedMinutes,
+} from "./date-utils";
 import type { Attendance, User, WorkType } from "./types";
 
 type Tab = "today" | "records" | "stats" | "account";
@@ -79,7 +82,7 @@ export default function App() {
 
       <main>
         {error && <div className="toast" onClick={() => setError("")}>{error}</div>}
-        {tab === "today" && <Today records={records} reload={loadRecords} />}
+        {tab === "today" && <Today records={records} reload={loadRecords} setError={setError} />}
         {tab === "records" && (
           <Records
             records={records} month={month} setMonth={setMonth}
@@ -154,9 +157,10 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function Today({ records, reload }: { records: Attendance[]; reload: () => Promise<void> }) {
+function Today({ records, reload, setError }: { records: Attendance[]; reload: () => Promise<void>; setError: (value: string) => void }) {
   const date = localDate();
   const record = records.find((item) => item.work_date === date);
+  const [editing, setEditing] = useState(false);
   const [now, setNow] = useState(seoulTime());
   useEffect(() => {
     const timer = setInterval(() => setNow(seoulTime()), 30_000);
@@ -164,16 +168,18 @@ function Today({ records, reload }: { records: Attendance[]; reload: () => Promi
   }, []);
 
   const save = async (next: Attendance) => { await api.saveRecord(next); await reload(); };
-  const checkIn = () => save({ ...blankRecord(date), check_in_time: now });
-  const checkOut = () => record && save({ ...record, check_out_time: now });
+  const checkIn = () => {
+    if (confirm(`${now}에 출근할까요?`)) save({ ...blankRecord(date), check_in_time: now });
+  };
+  const checkOut = () => {
+    if (record && confirm(`${now}에 퇴근할까요?`)) save({ ...record, check_out_time: now });
+  };
   const minutes = record ? workedMinutes(record, now) : 0;
-  const overtime = record ? overtimeMinutes(record, now) : -480;
-  const target = record?.check_in_time
-    ? (() => {
-      const [h, m] = record.check_in_time!.split(":").map(Number);
-      return `${String(Math.floor((h * 60 + m + 540) / 60) % 24).padStart(2, "0")}:${String((m + 540) % 60).padStart(2, "0")}`;
-    })()
-    : "--:--";
+  const week = weeklySummary(records, date, now);
+  const target = record ? checkoutTime(record, records) : null;
+  const canLeave = target ? minutesOf(now) >= minutesOf(target) : false;
+  const holiday = holidayName(date);
+  const dayOff = isNonWorkingDate(date) && !record;
 
   return (
     <div className="page">
@@ -181,21 +187,26 @@ function Today({ records, reload }: { records: Attendance[]; reload: () => Promi
       <section className="hero-card">
         <div>
           <span className={`status ${record?.check_out_time ? "done" : record?.check_in_time ? "working" : ""}`}>
-            {record?.check_out_time ? "퇴근 완료" : record?.check_in_time ? "근무 중" : "출근 전"}
+            {dayOff ? "휴일" : record?.check_out_time ? "퇴근 완료" : record?.check_in_time ? "근무 중" : "출근 전"}
           </span>
-          <h2>{record ? formatDuration(minutes) : "출근을 기록해 주세요"}</h2>
-          <p>{record?.check_in_time ? `${record.check_in_time} 출근${record.check_out_time ? ` · ${record.check_out_time} 퇴근` : ""}` : "버튼을 누르면 현재 시간이 기록됩니다."}</p>
+          <h2>{dayOff ? (holiday || "오늘은 쉬는 날이에요") : record ? formatDuration(minutes) : "출근을 기록해 주세요"}</h2>
+          <p>{dayOff ? "편안한 휴일 보내세요." : record?.check_in_time ? `${record.check_in_time} 출근${record.check_out_time ? ` · ${record.check_out_time} 퇴근` : ""}` : "버튼을 누르면 현재 시간이 기록됩니다."}</p>
         </div>
-        {!record?.check_in_time
-          ? <button className="clock-button" onClick={checkIn}>출근하기</button>
-          : !record.check_out_time && <button className="clock-button out" onClick={checkOut}>퇴근하기</button>}
+        <div className="hero-actions">
+          <button className="manual-button" onClick={() => setEditing(true)}>직접 기록 {record ? "수정" : "추가"}</button>
+          {!dayOff && (!record?.check_in_time
+            ? <button className="clock-button" onClick={checkIn}>출근하기</button>
+            : !record.check_out_time && <button className="clock-button out" onClick={checkOut}>{canLeave ? "지금 퇴근 가능" : "퇴근하기"}</button>)}
+        </div>
       </section>
-      <section className="kpi-grid">
-        <Kpi title="오늘 근무시간" value={record ? formatDuration(minutes) : "-"} />
-        <Kpi title="오늘 초과근무" value={record ? formatDuration(overtime, true) : "-"} tone={overtime < 0 ? "negative" : "positive"} />
-        <Kpi title="퇴근 가능시간" value={target} />
+      <section className="kpi-grid four">
+        <Kpi title="이번 주 근무시간" value={formatDuration(week.worked)} />
+        <Kpi title="이번 주 초과근무" value={formatDuration(week.overtime, true)} tone={week.overtime < 0 ? "negative" : "positive"} />
+        <Kpi title="이번 주 필요 근무" value={formatDuration(week.required)} />
+        <Kpi title="퇴근 가능시간" value={target ?? "--:--"} tone={canLeave ? "positive" : ""} />
       </section>
       <WeeklyMini records={records} today={date} now={now} />
+      {editing && <RecordDialog record={record ?? blankRecord(date)} close={() => setEditing(false)} saved={reload} setError={setError} />}
     </div>
   );
 }
@@ -211,20 +222,20 @@ function WeeklyMini({ records, today, now }: { records: Attendance[]; today: str
     const date = new Date(target);
     date.setUTCDate(date.getUTCDate() + index);
     const key = date.toISOString().slice(0, 10);
-    return { key, record: records.find((item) => item.work_date === key), label: ["월", "화", "수", "목", "금"][index] };
+    return { key, record: records.find((item) => item.work_date === key), label: ["월", "화", "수", "목", "금"][index], holiday: holidayName(key) };
   });
   return (
     <section className="card weekly">
       <div className="section-title"><h2>이번 주 근무</h2><span>8시간 기준</span></div>
       <div className="week-chart">
-        {days.map(({ key, record, label }) => {
-          const special = record && record.work_type !== "work";
+        {days.map(({ key, record, label, holiday }) => {
+          const special = record?.work_type !== "work" || Boolean(holiday);
           const amount = record ? workedMinutes(record, key === today ? now : undefined) : 0;
           const overtime = record ? overtimeMinutes(record, key === today ? now : undefined) : 0;
           return (
             <div className="day-column" key={key}>
               <div className="day-value">
-                {special ? <em>{typeLabel(record.work_type)}</em> : amount ? <><b>{formatDuration(amount)}</b><small className={overtime < 0 ? "negative" : "positive"}>{formatDuration(overtime, true)}</small></> : null}
+                {special ? <em>{record && record.work_type !== "work" ? typeLabel(record.work_type) : holiday}</em> : amount ? <><b>{formatDuration(amount)}</b><small className={overtime < 0 ? "negative" : "positive"}>{formatDuration(overtime, true)}</small></> : null}
               </div>
               <div className="bar-area">{!special && amount > 0 && <i style={{ height: `${Math.min(100, amount / 480 * 100)}%` }} />}</div>
               <span>{label}<small>{Number(key.slice(8))}</small></span>
@@ -242,6 +253,7 @@ function Records(props: {
 }) {
   const [editing, setEditing] = useState<Attendance | null>(null);
   const [selected, setSelected] = useState(localDate());
+  const [view, setView] = useState<"calendar" | "list">("calendar");
   const [year, monthNumber] = props.month.split("-").map(Number);
   const first = new Date(Date.UTC(year, monthNumber - 1, 1));
   const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -257,14 +269,15 @@ function Records(props: {
   };
   return (
     <div className="page">
-      <header><div><p className="eyebrow">근무 기록</p><h1>기록</h1></div><MonthNav month={props.month} setMonth={props.setMonth} /></header>
-      <section className="card calendar">
+      <header><div><p className="eyebrow">근무 기록</p><h1>기록</h1></div><div className="record-tools"><MonthNav month={props.month} setMonth={props.setMonth} /><div className="view-toggle"><button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>달력</button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>목록</button></div></div></header>
+      {view === "calendar" && <section className="card calendar">
         <div className="weekday-row">{["일", "월", "화", "수", "목", "금", "토"].map((day) => <span key={day}>{day}</span>)}</div>
         <div className="calendar-grid">
           {cells.map((date, index) => {
             if (!date) return <div className="calendar-cell empty" key={`empty-${index}`} />;
             const record = props.records.find((item) => item.work_date === date);
             const overtime = record ? overtimeMinutes(record) : 0;
+            const holiday = holidayName(date);
             return (
               <button key={date} className={`calendar-cell ${date === localDate() ? "today" : ""} ${date === selected ? "selected" : ""}`} onClick={() => select(date)}>
                 <b>{Number(date.slice(8))}</b>
@@ -273,12 +286,13 @@ function Records(props: {
                     ? <span className="calendar-work">{workedMinutes(record) ? formatDuration(workedMinutes(record)) : "근무 중"}<small className={overtime < 0 ? "negative" : "positive"}>{record.check_out_time ? formatDuration(overtime, true) : "근무 중"}</small></span>
                     : <em>{typeLabel(record.work_type)}</em>
                 )}
+                {!record && holiday && <em>{holiday}</em>}
               </button>
             );
           })}
         </div>
-      </section>
-      <section className="card record-list">
+      </section>}
+      {view === "list" && <section className="card record-list">
         <div className="section-title"><h2>{monthLabel(props.month)} 기록</h2><button className="secondary" onClick={() => select(selected)}>기록 추가</button></div>
         {props.records.filter((r) => r.work_date.startsWith(props.month)).length === 0 && <div className="empty-state">아직 기록이 없어요.</div>}
         {props.records.filter((r) => r.work_date.startsWith(props.month)).map((record) => (
@@ -288,7 +302,7 @@ function Records(props: {
             <strong>{formatDuration(workedMinutes(record))}<small className={overtimeMinutes(record) < 0 ? "negative" : "positive"}>{formatDuration(overtimeMinutes(record), true)}</small></strong>
           </button>
         ))}
-      </section>
+      </section>}
       {editing && <RecordDialog record={editing} close={() => setEditing(null)} saved={props.reload} setError={props.setError} />}
     </div>
   );
@@ -301,7 +315,11 @@ function RecordDialog({ record, close, saved, setError }: {
   const update = <K extends keyof Attendance>(key: K, next: Attendance[K]) => setValue({ ...value, [key]: next });
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    try { await api.saveRecord(value); await saved(); close(); } catch (e) { setError((e as Error).message); }
+    try {
+      await api.saveRecord(value);
+      if (record.id && record.work_date !== value.work_date) await api.deleteRecord(record.work_date);
+      await saved(); close();
+    } catch (e) { setError((e as Error).message); }
   };
   const remove = async () => {
     if (!confirm("이 기록을 삭제할까요?")) return;
@@ -311,8 +329,9 @@ function RecordDialog({ record, close, saved, setError }: {
     <div className="dialog-backdrop" onMouseDown={close}>
       <form className="dialog" onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}>
         <div className="section-title"><h2>{value.work_date} 기록</h2><button type="button" className="icon-button" onClick={close}>×</button></div>
+        <label>근무 날짜<input type="date" value={value.work_date} onChange={(e) => update("work_date", e.target.value)} required /></label>
         <label>근무 유형<select value={value.work_type} onChange={(e) => update("work_type", e.target.value as WorkType)}><option value="work">출근</option><option value="annual">연차</option><option value="half">반차</option><option value="holiday">공휴일</option></select></label>
-        {(value.work_type === "work" || value.work_type === "half") && <div className="form-grid"><label>출근시간<input type="time" value={value.check_in_time ?? ""} onChange={(e) => update("check_in_time", e.target.value || null)} /></label><label>퇴근시간<input type="time" value={value.check_out_time ?? ""} onChange={(e) => update("check_out_time", e.target.value || null)} /></label></div>}
+        {value.work_type === "work" && <div className="form-grid"><label>출근시간<input type="time" value={value.check_in_time ?? ""} onChange={(e) => update("check_in_time", e.target.value || null)} /></label><label>퇴근시간<input type="time" value={value.check_out_time ?? ""} onChange={(e) => update("check_out_time", e.target.value || null)} /></label></div>}
         <label>휴게시간(분)<input type="number" min="0" max="240" value={value.break_minutes} onChange={(e) => update("break_minutes", Number(e.target.value))} /></label>
         <label>메모<textarea value={value.memo} onChange={(e) => update("memo", e.target.value)} placeholder="선택 입력" /></label>
         <div className="dialog-actions"><button type="button" className="danger" onClick={remove}>삭제</button><button className="primary">저장</button></div>
@@ -322,47 +341,54 @@ function RecordDialog({ record, close, saved, setError }: {
 }
 
 function Stats({ records, month, setMonth }: { records: Attendance[]; month: string; setMonth: (value: string) => void }) {
-  const weeks = useMemo(() => {
-    const grouped = new Map<string, Attendance[]>();
-    records.filter((r) => new Date(`${r.work_date}T00:00:00Z`).getUTCDay() >= 1 && new Date(`${r.work_date}T00:00:00Z`).getUTCDay() <= 5)
-      .forEach((record) => {
-        const date = new Date(`${record.work_date}T00:00:00Z`);
-        date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
-        const key = date.toISOString().slice(0, 10);
-        grouped.set(key, [...(grouped.get(key) ?? []), record]);
-      });
-    return [...grouped].map(([start, items]) => {
-      const end = new Date(`${start}T00:00:00Z`); end.setUTCDate(end.getUTCDate() + 6);
-      const required = items.reduce((sum, item) => sum + (item.work_type === "annual" || item.work_type === "holiday" ? 0 : 480), 0);
-      const worked = items.reduce((sum, item) => sum + (item.work_type === "annual" || item.work_type === "holiday" ? 0 : workedMinutes(item)), 0);
-      return { start, end: end.toISOString().slice(5, 10).replace("-", "."), required, worked };
-    }).sort((a, b) => a.start.localeCompare(b.start));
-  }, [records]);
-  const completed = records.filter((r) => r.check_out_time || r.work_type !== "work");
+  const monthRecords = records.filter((record) => record.work_date.startsWith(month));
+  const completed = monthRecords.filter((record) => record.work_type === "half" || (record.work_type === "work" && record.check_out_time));
   const total = completed.reduce((sum, record) => sum + workedMinutes(record), 0);
   const overtime = completed.reduce((sum, record) => sum + overtimeMinutes(record), 0);
+  const workDays = monthRecords.reduce((sum, record) => sum + (record.work_type === "work" ? 1 : record.work_type === "half" ? 0.5 : 0), 0);
+  const average = (values: string[]) => values.length
+    ? timeOf(values.reduce((sum, value) => sum + minutesOf(value), 0) / values.length)
+    : "--:--";
+  const averageIn = average(monthRecords.flatMap((record) => record.check_in_time ? [record.check_in_time] : []));
+  const averageOut = average(monthRecords.flatMap((record) => record.check_out_time ? [record.check_out_time] : []));
+  const range = dateRangeForMonth(month);
+  const weeks = [];
+  for (let start = range.from; start <= range.to; start = addDays(start, 7)) {
+    weeks.push({ start, end: addDays(start, 4), ...weeklySummary(records, start) });
+  }
+  const typeCounts = {
+    work: monthRecords.filter((record) => record.work_type === "work").length,
+    half: monthRecords.filter((record) => record.work_type === "half").length,
+    annual: monthRecords.filter((record) => record.work_type === "annual").length,
+  };
   return (
     <div className="page">
       <header><div><p className="eyebrow">월간 리포트</p><h1>통계</h1></div><MonthNav month={month} setMonth={setMonth} /></header>
-      <section className="kpi-grid">
+      <section className="kpi-grid stats-grid">
+        <Kpi title="총 근무일" value={`${workDays}일`} />
         <Kpi title="총 근무시간" value={formatDuration(total)} />
+        <Kpi title="평균 출근" value={averageIn} />
+        <Kpi title="평균 퇴근" value={averageOut} />
         <Kpi title="총 초과근무" value={formatDuration(overtime, true)} tone={overtime < 0 ? "negative" : "positive"} />
-        <Kpi title="근무일" value={`${completed.length}일`} />
       </section>
       <section className="card">
         <div className="section-title"><h2>주별 근무시간</h2><span>실제 / 필요 근무시간</span></div>
         <div className="week-list">
           {weeks.map((week) => {
             const difference = week.worked - week.required;
+            const inProgress = week.end >= localDate();
             return (
               <div className="week-row" key={week.start}>
-                <div className="week-row-head"><b>{week.start.slice(5).replace("-", ".")} — {week.end}</b><span>{formatDuration(week.worked)} / {formatDuration(week.required)} <em className={difference < 0 ? "negative" : "positive"}>{formatDuration(difference, true)}</em></span></div>
+                <div className="week-row-head"><b>{week.start.slice(5).replace("-", ".")} — {week.end.slice(5).replace("-", ".")}</b><span>{formatDuration(week.worked)} / {formatDuration(week.required)} <em className={difference < 0 ? "negative" : "positive"}>{inProgress ? "진행 중" : formatDuration(difference, true)}</em></span></div>
                 {week.worked > 0 && <div className="progress"><i style={{ width: `${Math.min(100, week.required ? week.worked / week.required * 100 : 100)}%` }} /></div>}
               </div>
             );
           })}
-          {!weeks.length && <div className="empty-state">표시할 주간 기록이 없어요.</div>}
         </div>
+      </section>
+      <section className="card">
+        <div className="section-title"><h2>근무 유형</h2><span>이번 달 기록</span></div>
+        <div className="type-summary"><div><span>출근</span><strong>{typeCounts.work}일</strong></div><div><span>반차</span><strong>{typeCounts.half}일</strong></div><div><span>연차</span><strong>{typeCounts.annual}일</strong></div></div>
       </section>
     </div>
   );
