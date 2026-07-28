@@ -70,10 +70,18 @@ api.post("/auth/logout", requireAuth, async (c) => {
 });
 
 api.get("/me", requireAuth, (c) => c.json(c.get("user")));
-api.patch("/me", requireAuth, zValidator("json", z.object({
+const profileInput = z.object({
   displayName: z.string().trim().min(1).max(30),
-  profilePhoto: z.string().max(250_000).regex(/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/).nullable(),
-})), async (c) => {
+  profilePhoto: z.string().max(300_000).refine(
+    (value) => /^data:image\/(webp|png|jpeg);base64,/.test(value),
+    "지원하지 않는 이미지 형식입니다.",
+  ).nullable(),
+});
+api.patch("/me", requireAuth, zValidator("json", profileInput, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: "프로필 사진은 JPG, PNG, WebP 형식이며 250KB 이하여야 합니다." }, 400);
+  }
+}), async (c) => {
   const input = c.req.valid("json");
   await c.env.DB.prepare("UPDATE users SET display_name = ?, profile_photo = ? WHERE id = ?")
     .bind(input.displayName, input.profilePhoto, c.get("user").id).run();
