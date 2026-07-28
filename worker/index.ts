@@ -72,10 +72,11 @@ api.post("/auth/logout", requireAuth, async (c) => {
 api.get("/me", requireAuth, (c) => c.json(c.get("user")));
 api.patch("/me", requireAuth, zValidator("json", z.object({
   displayName: z.string().trim().min(1).max(30),
+  profilePhoto: z.string().max(250_000).regex(/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/).nullable(),
 })), async (c) => {
-  const displayName = c.req.valid("json").displayName;
-  await c.env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?")
-    .bind(displayName, c.get("user").id).run();
+  const input = c.req.valid("json");
+  await c.env.DB.prepare("UPDATE users SET display_name = ?, profile_photo = ? WHERE id = ?")
+    .bind(input.displayName, input.profilePhoto, c.get("user").id).run();
   return c.json({ ok: true });
 });
 
@@ -164,9 +165,16 @@ api.delete("/attendance/:date", requireAuth, async (c) => {
   return c.json({ ok: true });
 });
 
+api.get("/users", requireAuth, async (c) => {
+  const users = await c.env.DB.prepare(
+    "SELECT id, username, display_name, profile_photo FROM users WHERE is_active = 1 ORDER BY display_name",
+  ).all();
+  return c.json(users.results);
+});
+
 api.get("/admin/users", requireAuth, requireAdmin, async (c) => {
   const users = await c.env.DB.prepare(
-    `SELECT id, username, display_name, role, is_active, created_at, last_login_at, last_active_at
+    `SELECT id, username, display_name, profile_photo, role, is_active, created_at, last_login_at, last_active_at
      FROM users ORDER BY created_at`,
   ).all();
   return c.json(users.results);

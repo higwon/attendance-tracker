@@ -161,6 +161,15 @@
 .record-form .checkout-toggle { display: flex; grid-template-columns: none; align-items: center; gap: 7px; }
 .record-form .checkout-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
 .time-24-field select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+.record-row { grid-template-columns: 1.2fr .5fr 1fr 1fr .7fr auto; }
+.avatar-image { overflow: hidden; padding: 0; }
+.avatar-image img { width: 100%; height: 100%; object-fit: cover; }
+.profile-photo-actions { display: flex; gap: 8px; margin-top: 14px; }
+.profile-photo-actions label { display: block; width: auto; margin: 0; cursor: pointer; text-align: center; }
+.profile-photo-actions input { display: none; }
+.user-list-card.directory .user-list-header,.user-list-card.directory .user-row { grid-template-columns: 1fr; }
+.time-field-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.record-form .time-field-label input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
 .week-chart .bar-item { display: grid; grid-template-rows: 54px minmax(0, 1fr) 28px; }
 .bar-plot { position: relative; width: 100%; height: 100%; }
 .bar-plot > .stacked-bar { position: absolute; bottom: 0; left: 14%; display: flex; flex-direction: column; justify-content: flex-end; width: 72%; min-height: 2px; overflow: hidden; border-radius: 5px 5px 0 0; background: transparent; }
@@ -181,6 +190,7 @@
   .invite-card > div { grid-column: 1 / -1; }
   .user-list-card { overflow-x: auto; }
   .user-list-header,.user-row { min-width: 720px; }
+  .user-list-card.directory .user-list-header,.user-list-card.directory .user-row { min-width: 0; }
   .today-metrics { grid-template-columns: repeat(2, 1fr); }
   .calendar-blank { min-height: 105px; }
 }

@@ -17,4 +17,5 @@ export type User = {
   role: "user" | "admin";
   is_active: number;
   last_active_at?: string | null;
+  profile_photo: string | null;
 };

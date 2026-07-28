@@ -327,6 +327,7 @@ export default function App() {
   const [confirmText, setConfirmText] = useState("");
   const [form, setForm] = useState<RecordForm>(emptyForm(seoulParts().date));
   const [profileName, setProfileName] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -340,6 +341,7 @@ export default function App() {
     api.me().then((value) => {
       setUser(value);
       setProfileName(value.display_name);
+      setProfilePhoto(value.profile_photo);
     }).catch(() => setUser(null)).finally(() => setAuthLoading(false));
     const timer = setInterval(() => setClock(seoulParts()), 1_000);
     return () => clearInterval(timer);
@@ -501,10 +503,11 @@ export default function App() {
     event.preventDefault();
     setBusy(true);
     try {
-      await api.updateMe(profileName);
+      await api.updateMe(profileName, profilePhoto);
       const updated = await api.me();
       setUser(updated);
-      setToast({ text: "표시 이름을 변경했습니다." });
+      setProfilePhoto(updated.profile_photo);
+      setToast({ text: "프로필을 저장했습니다." });
     } catch (cause) {
       setToast({ text: cause instanceof Error ? cause.message : "계정 정보를 저장하지 못했습니다.", error: true });
     } finally {
@@ -534,7 +537,7 @@ export default function App() {
   };
 
   if (!mounted || authLoading) return <main className="app-shell loading-shell"><span>나의 출퇴근 기록을 불러오는 중…</span></main>;
-  if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); })} />;
+  if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); setProfilePhoto(value.profile_photo); })} />;
 
   const editingRecord = form.id ? allRecords.find((record) => record.Id === form.id) : undefined;
 
@@ -553,7 +556,7 @@ export default function App() {
         <div className="account-area">
           <span className="private-badge">● 계정별 비공개</span>
           <button className="account-trigger" onClick={() => setTab("account")} title={user.username}>
-            <span>{user.display_name.slice(0, 1)}</span><b>{user.display_name}</b>
+            <Avatar user={user} /><b>{user.display_name}</b>
           </button>
         </div>
       </header>
@@ -567,8 +570,19 @@ export default function App() {
             <section className="page-heading"><div><p>계정 관리</p><h1>내 계정</h1></div><span className="role-chip">{user.role === "admin" ? "관리자" : "일반 사용자"}</span></section>
             <section className="account-layout deploy-account-layout">
               <form className="settings-card profile-card" onSubmit={saveProfile}>
-                <div className="profile-avatar">{user.display_name.slice(0, 1)}</div>
+                <Avatar user={{ ...user, profile_photo: profilePhoto }} className="profile-avatar" />
                 <div className="profile-copy"><h2>{user.display_name}</h2><p>@{user.username}</p></div>
+                <div className="profile-photo-actions"><label className="secondary">사진 선택<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    setProfilePhoto(await prepareProfilePhoto(file));
+                  } catch (cause) {
+                    setToast({ text: cause instanceof Error ? cause.message : "사진을 처리하지 못했습니다.", error: true });
+                  } finally {
+                    event.target.value = "";
+                  }
+                }} /></label>{profilePhoto && <button type="button" className="secondary" onClick={() => setProfilePhoto(null)}>사진 삭제</button>}</div>
                 <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
                 <button className="primary" disabled={busy}>변경사항 저장</button>
               </form>
@@ -582,7 +596,7 @@ export default function App() {
                 <button className="settings-card signout-card" onClick={logout}><span>로그아웃</span><b>›</b></button>
               </div>
             </section>
-            {user.role === "admin" && <UserManagement currentUserId={user.id} />}
+            <UserManagement currentUserId={user.id} isAdmin={user.role === "admin"} />
           </>
         )}
       </div>
@@ -602,8 +616,7 @@ export default function App() {
               setForm({ ...form, workDate });
             }} /></label>
             <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}{form.workType === "공휴일" && <option value="공휴일" disabled>공휴일(자동)</option>}</select></label>
-            {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><div className="checkout-field"><label className="checkout-toggle"><input type="checkbox" checked={form.includeCheckOut} onChange={(event) => setForm({ ...form, includeCheckOut: event.target.checked })} /> 퇴근시간 입력</label><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} disabled={!form.includeCheckOut} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div></div>}
-            <label>메모<textarea rows={3} placeholder="오늘의 업무나 특이사항을 적어보세요." value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} /></label>
+            {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} disabled={!form.includeCheckOut} toggle={{ checked: form.includeCheckOut, onChange: (checked) => setForm({ ...form, includeCheckOut: checked }) }} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div>}
             <div className={`modal-actions ${editingRecord ? "split" : ""}`}>{editingRecord && <button type="button" className="delete-record" onClick={() => deleteRecord(editingRecord)}>기록 삭제</button>}<span className="action-group"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className="primary" disabled={busy}>{busy ? "저장 중…" : "저장"}</button></span></div>
           </form>
         </Modal>
@@ -1024,6 +1037,7 @@ function RecordRow({ record, onEdit, onDelete }: { record: RecordItem; onEdit: (
       <span className={`type type-${record.WorkType}`}>{record.WorkType}</span>
       <div><small>시간</small><b>{recordTimeSummary(record)}</b></div>
       <div><small>반영 근무</small><b>{recordWorkSummary(record)}</b></div>
+      <div><small>추가 시간</small><b>{record.WorkType === "연차" || record.WorkType === "공휴일" ? "-" : record.WorkType === "반차" ? "0분" : !record.CheckOutTime ? "근무 중" : formatWorkDelta(workDuration(record) - 480)}</b></div>
       <div className="row-actions"><button onClick={onEdit}>수정</button><button className="danger" onClick={onDelete}>삭제</button></div>
     </article>
   );
@@ -1188,11 +1202,13 @@ function TimeField({
   label,
   value,
   disabled = false,
+  toggle,
   onChange,
 }: {
   label: string;
   value: string;
   disabled?: boolean;
+  toggle?: { checked: boolean; onChange: (checked: boolean) => void };
   onChange: (value: string) => void;
 }) {
   const [hour = "00", minute = "00"] = value.split(":");
@@ -1201,7 +1217,7 @@ function TimeField({
 
   return (
     <label>
-      {label}
+      <span className="time-field-label">{label}{toggle && <input type="checkbox" aria-label="퇴근시간 사용" checked={toggle.checked} onChange={(event) => toggle.onChange(event.target.checked)} />}</span>
       <span className="time-24-field">
         <select
           aria-label={`${label} 시`}
@@ -1250,26 +1266,62 @@ function formatLastActive(value: string | null) {
   }).format(date);
 }
 
-function UserManagement({ currentUserId }: { currentUserId: string }) {
-  const [users, setUsers] = useState<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>([]);
-  const load = useCallback(() => api.users().then(setUsers), []);
+function Avatar({
+  user,
+  className = "",
+}: {
+  user: Pick<User, "display_name" | "profile_photo">;
+  className?: string;
+}) {
+  return user.profile_photo
+    ? <span className={`avatar-image ${className}`}><img src={user.profile_photo} alt="" /></span>
+    : <span className={className}>{user.display_name.slice(0, 1)}</span>;
+}
+
+async function prepareProfilePhoto(file: File) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("JPG, PNG, WebP 이미지만 사용할 수 있습니다.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("원본 사진은 5MB 이하여야 합니다.");
+  const bitmap = await createImageBitmap(file);
+  const size = Math.min(256, Math.max(bitmap.width, bitmap.height));
+  const scale = size / Math.max(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("사진을 처리하지 못했습니다.");
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const result = canvas.toDataURL("image/webp", 0.8);
+  if (result.length > 250_000) throw new Error("압축된 사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.");
+  return result;
+}
+
+type DirectoryUser = Pick<User, "id" | "username" | "display_name" | "profile_photo"> & Partial<Pick<User, "role" | "is_active">> & {
+  created_at?: string;
+  last_login_at?: string | null;
+  last_active_at?: string | null;
+};
+
+function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isAdmin: boolean }) {
+  const [users, setUsers] = useState<DirectoryUser[]>([]);
+  const load = useCallback(() => (isAdmin ? api.adminUsers() : api.directory()).then(setUsers), [isAdmin]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   return (
-    <section className="user-list-card deploy-user-management">
+    <section className={`user-list-card deploy-user-management ${isAdmin ? "admin" : "directory"}`}>
       <div className="user-list-header">
-        <span>사용자</span><span>권한</span><span>상태</span><span>마지막 활동</span>
+        <span>사용자</span>{isAdmin && <><span>권한</span><span>상태</span><span>마지막 활동</span></>}
       </div>
       {users.map((managedUser) => (
         <article className="user-row" key={managedUser.id}>
           <div className="user-identity">
-            <span>{managedUser.display_name.slice(0, 1)}</span>
+            <Avatar user={managedUser} />
             <div><strong>{managedUser.display_name}</strong><small>@{managedUser.username}</small></div>
           </div>
-          <select
+          {isAdmin && <><select
             value={managedUser.role}
             disabled={managedUser.id === currentUserId}
             onChange={async (event) => {
@@ -1292,8 +1344,8 @@ function UserManagement({ currentUserId }: { currentUserId: string }) {
             <option value="inactive">비활성</option>
           </select>
           <span className="last-seen">
-            {formatLastActive(managedUser.last_active_at)}
-          </span>
+            {formatLastActive(managedUser.last_active_at ?? null)}
+          </span></>}
         </article>
       ))}
     </section>
