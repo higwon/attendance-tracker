@@ -76,7 +76,7 @@ export async function requireAuth(
   if (!token) return c.json({ message: "로그인이 필요합니다." }, 401);
 
   const user = await c.env.DB.prepare(
-    `SELECT u.id, u.username, u.display_name, u.role, u.is_active, u.last_active_at, u.profile_photo
+    `SELECT u.id, u.username, u.display_name, u.role, u.is_active, u.last_active_at
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ?`,
   ).bind(await sha256(token), new Date().toISOString()).first<AppUser>();

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { clearSession, createSession, hashPassword, requireAdmin, requireAuth, verifyPassword } from "./auth";
 import type { Bindings, Variables } from "./types";
 import { getBlockedWorkDateReason } from "../shared/work-date-policy";
+import { isValidProfilePhoto } from "./profile-photo";
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const api = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -69,11 +70,16 @@ api.post("/auth/logout", requireAuth, async (c) => {
   return c.json({ ok: true });
 });
 
-api.get("/me", requireAuth, (c) => c.json(c.get("user")));
+api.get("/me", requireAuth, async (c) => {
+  const profile = await c.env.DB.prepare("SELECT profile_photo FROM users WHERE id = ?")
+    .bind(c.get("user").id).first<{ profile_photo: string | null }>();
+  return c.json({ ...c.get("user"), profile_photo: profile?.profile_photo ?? null });
+});
+
 const profileInput = z.object({
   displayName: z.string().trim().min(1).max(30),
   profilePhoto: z.string().max(300_000).refine(
-    (value) => /^data:image\/(webp|png|jpeg);base64,/.test(value),
+    isValidProfilePhoto,
     "지원하지 않는 이미지 형식입니다.",
   ).nullable(),
 });
