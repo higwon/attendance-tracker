@@ -304,6 +304,8 @@ export function getWeeklySummary(records: RecordItem[], todayDate: string, now: 
     weeklyWorkMinutes,
     weeklyOvertimeMinutes,
     targetMinutes,
+    priorWorkMinutes,
+    todayTarget,
     requiredTodayMinutes,
     availableCheckOutTime,
   };
@@ -796,7 +798,13 @@ function TodayView({
           danger={summary.weeklyOvertimeMinutes < 0}
         />
         <Metric icon="◎" label="이번 주 필요 근무" value={formatDuration(summary.targetMinutes)} />
-        <DepartureMetric value={summary.availableCheckOutTime} ready={canLeaveNow} />
+        <DepartureMetric
+          value={summary.availableCheckOutTime}
+          ready={canLeaveNow}
+          today={today}
+          todayDate={clock.date}
+          summary={summary}
+        />
       </section>
 
       <WeekChart records={records} todayDate={clock.date} now={clock.time} />
@@ -825,14 +833,60 @@ function Metric({
   );
 }
 
-function DepartureMetric({ value, ready }: { value: string; ready: boolean }) {
+function DepartureMetric({
+  value,
+  ready,
+  today,
+  todayDate,
+  summary,
+}: {
+  value: string;
+  ready: boolean;
+  today?: RecordItem;
+  todayDate: string;
+  summary: ReturnType<typeof getWeeklySummary>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isLastWorkDate = todayDate === summary.lastWorkDate;
+  const priorTargetMinutes = summary.targetMinutes - summary.todayTarget;
+  const priorDifference = summary.priorWorkMinutes - priorTargetMinutes;
+  const adjustmentCopy = priorDifference > 0
+    ? `기존 초과근무로 오늘 필요 시간이 ${priorDifference}분 줄었어요.`
+    : priorDifference < 0
+      ? `기존 부족시간으로 오늘 ${Math.abs(priorDifference)}분 더 근무해야 해요.`
+      : "오늘 기본 근무시간을 채우면 이번 주 기준을 충족해요.";
+  const description = isLastWorkDate
+    ? "이번 주 남은 필요 근무시간을 기준으로 계산했어요."
+    : "오늘은 출근 시간부터 8시간 근무 기준이에요.";
+  const detailRows = isLastWorkDate
+    ? [
+      ["이번 주 필요 근무시간", formatDuration(summary.targetMinutes)],
+      ["이전까지 누적 근무시간", formatDuration(summary.priorWorkMinutes)],
+      ["오늘 필요한 근무시간", formatDuration(summary.requiredTodayMinutes)],
+      ["오늘 출근 시간", today?.CheckInTime ?? "--:--"],
+      ["휴게시간", formatDuration(today?.BreakMinutes ?? 60)],
+      ["최종 퇴근 가능 시간", value],
+    ]
+    : [
+      ["출근 시간", today?.CheckInTime ?? "--:--"],
+      ["필요 근무시간", "8시간"],
+      ["휴게시간", formatDuration(today?.BreakMinutes ?? 60)],
+      ["최종 퇴근 가능 시간", value],
+    ];
+
   return (
-    <article className={`metric-card departure-metric ${ready ? "ready" : ""}`}>
+    <article className={`metric-card departure-metric ${ready ? "ready" : ""} ${expanded ? "expanded" : ""}`}>
       <span className="metric-icon green">✓</span>
-      <div>
-        <p>퇴근 가능 시간 {ready && <em>지금 퇴근 가능</em>}</p>
+      <div className="departure-content">
+        <div className="departure-heading"><p>퇴근 가능 시간 {ready && <em>지금 퇴근 가능</em>}</p><button type="button" className="departure-info" aria-label="퇴근 가능 시간 계산 설명" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>i</button></div>
         <strong>{value}</strong>
-        {ready && <small>기준 근무시간을 모두 채웠어요.</small>}
+        <small>{description}</small>
+        <div className="departure-details" aria-hidden={!expanded}>
+          <div>
+            {detailRows.map(([label, detail]) => <p key={label}><span>{label}</span><b>{detail}</b></p>)}
+            {isLastWorkDate && <aside>{adjustmentCopy}</aside>}
+          </div>
+        </div>
       </div>
     </article>
   );
