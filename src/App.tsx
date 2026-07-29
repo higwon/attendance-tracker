@@ -78,7 +78,7 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
           {register && <label>이름<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>}
           <label>아이디<input value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
           <label>비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          <button className="primary" disabled={busy}>{busy ? "처리 중…" : register ? "회원가입" : "로그인"}</button>
+          <button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "처리 중…" : register ? "회원가입" : "로그인"}</button>
         </form>
         <button className="auth-switch" onClick={() => { setRegister(!register); setError(""); }}>
           {register ? "이미 계정이 있어요 · 로그인" : "처음인가요? · 회원가입"}
@@ -321,6 +321,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const [toastClosing, setToastClosing] = useState(false);
+  const [profileSaveState, setProfileSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [highlightedRecordDate, setHighlightedRecordDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
   const [modal, setModal] = useState<"form" | "confirm" | "delete-account" | null>(null);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
@@ -352,9 +355,17 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return;
+    setToastClosing(false);
+    const closingTimer = setTimeout(() => setToastClosing(true), 2_980);
     const timer = setTimeout(() => setToast(null), 3_200);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(closingTimer); clearTimeout(timer); };
   }, [toast]);
+
+  useEffect(() => {
+    if (!highlightedRecordDate) return;
+    const timer = setTimeout(() => setHighlightedRecordDate(null), 1_200);
+    return () => clearTimeout(timer);
+  }, [highlightedRecordDate]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -406,6 +417,7 @@ export default function App() {
         work_type: toApiType(record.workType),
         memo: record.memo,
       }, originalWorkDate);
+      setHighlightedRecordDate(record.workDate);
       setToast({ text: "기록을 저장했습니다." });
       await load();
       setModal(null);
@@ -505,12 +517,15 @@ export default function App() {
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
+    setProfileSaveState("saving");
     try {
       await api.updateMe(profileName, profilePhoto, profileBio);
       const updated = await api.me();
       setUser(updated);
       setProfilePhoto(updated.profile_photo);
       setProfileBio(updated.bio);
+      setProfileSaveState("saved");
+      setTimeout(() => setProfileSaveState("idle"), 1_500);
       setToast({ text: "프로필을 저장했습니다." });
     } catch (cause) {
       setToast({ text: cause instanceof Error ? cause.message : "계정 정보를 저장하지 못했습니다.", error: true });
@@ -553,6 +568,7 @@ export default function App() {
       setToast({ text: cause instanceof Error ? cause.message : "회원 탈퇴를 처리하지 못했습니다.", error: true });
     } finally {
       setBusy(false);
+      setProfileSaveState((state) => state === "saving" ? "idle" : state);
     }
   };
 
@@ -580,9 +596,9 @@ export default function App() {
         </div>
       </header>
 
-      <div className="content">
+      <div className="content"><div key={tab} className="page-transition">
         {tab === "today" && <TodayView clock={clock} today={today} records={allRecords} workMinutes={workMinutes} summary={weeklySummary} busy={busy} onAction={quickAction} onEdit={() => openForm(today)} />}
-        {tab === "records" && <RecordsView todayDate={clock.date} now={clock.time} month={month} records={records} loading={loading} mode={viewMode} onMode={setViewMode} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onAdd={() => openForm()} onAddDate={(date) => openForm(undefined, date)} onEdit={openForm} onDelete={deleteRecord} />}
+        {tab === "records" && <RecordsView todayDate={clock.date} now={clock.time} month={month} records={records} loading={loading} mode={viewMode} highlightedDate={highlightedRecordDate} onMode={setViewMode} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onAdd={() => openForm()} onAddDate={(date) => openForm(undefined, date)} onEdit={openForm} onDelete={deleteRecord} />}
         {tab === "stats" && <StatsView month={month} stats={stats} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} />}
         {tab === "account" && (
           <div className="account-page">
@@ -594,7 +610,7 @@ export default function App() {
               <div className="account-section-heading"><h2>프로필 정보</h2><p>다른 사용자에게 표시되는 정보를 관리합니다.</p></div>
               <form className="settings-card profile-card account-profile-card" onSubmit={saveProfile}>
                 <div className="profile-header">
-                  <Avatar user={{ ...user, profile_photo: profilePhoto }} className="profile-avatar" />
+                  <span key={profilePhoto ?? "avatar"} className="profile-avatar-transition"><Avatar user={{ ...user, profile_photo: profilePhoto }} className="profile-avatar" /></span>
                   <div className="profile-summary"><div><h3>{user.display_name}</h3><span className="role-chip">{user.role === "admin" ? "관리자" : "일반 사용자"}</span></div><p>@{user.username}</p></div>
                   <div className="profile-photo-actions"><label className="secondary">사진 변경<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async (event) => {
                   const file = event.target.files?.[0];
@@ -612,7 +628,7 @@ export default function App() {
                   <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
                   <label>사용자 설명<textarea value={profileBio} maxLength={120} rows={3} placeholder="소속이나 담당 업무를 간단히 적어보세요." onChange={(event) => setProfileBio(event.target.value)} /></label>
                 </div>
-                <div className="account-form-actions"><button className="primary" disabled={busy}>변경사항 저장</button></div>
+                <div className="account-form-actions"><button className={`primary ${profileSaveState === "saving" ? "is-loading" : ""} ${profileSaveState === "saved" ? "is-saved" : ""}`} disabled={busy}>{profileSaveState === "saving" ? "저장 중..." : profileSaveState === "saved" ? "✓ 저장됨" : "변경사항 저장"}</button></div>
               </form>
             </section>
 
@@ -621,7 +637,7 @@ export default function App() {
                 <form className="settings-card account-info-card password-card security-card" onSubmit={changePassword}>
                   <label>현재 비밀번호<input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
                   <label>새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
-                  <div className="account-form-actions"><button className="primary" disabled={busy}>비밀번호 변경</button></div>
+                  <div className="account-form-actions"><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "변경 중..." : "비밀번호 변경"}</button></div>
                 </form>
             </section>
 
@@ -637,15 +653,15 @@ export default function App() {
 
             <details className="danger-zone">
               <summary><span><b>위험 영역</b><small>계정 삭제와 관련된 설정</small></span><i>⌄</i></summary>
-              <div className="danger-zone-content"><div><strong>회원 탈퇴</strong><p>계정과 저장된 모든 출퇴근 기록이 영구적으로 삭제됩니다.</p></div><button className="danger-outline-button" onClick={() => { setDeletePassword(""); setModal("delete-account"); }}>회원 탈퇴</button></div>
+              <div className="danger-zone-reveal"><div className="danger-zone-content"><div><strong>회원 탈퇴</strong><p>계정과 저장된 모든 출퇴근 기록이 영구적으로 삭제됩니다.</p></div><button className="danger-outline-button" onClick={() => { setDeletePassword(""); setModal("delete-account"); }}>회원 탈퇴</button></div></div>
             </details>
           </div>
         )}
-      </div>
+      </div></div>
 
-      {toast && <div role="status" className={`toast ${toast.error ? "error" : ""}`}>{toast.error ? "!" : "✓"} {toast.text}</div>}
-      {modal === "confirm" && <Modal title="확인" onClose={() => setModal(null)}><p className="confirm-copy">{confirmText}</p><div className="modal-actions"><button className="secondary" onClick={() => setModal(null)}>취소</button><button className="primary" disabled={busy} onClick={() => confirmAction?.()}>{busy ? "처리 중…" : "확인"}</button></div></Modal>}
-      {modal === "delete-account" && <Modal title="회원 탈퇴" onClose={() => setModal(null)}><form className="delete-confirm-form" onSubmit={deleteAccount}><p>탈퇴하면 계정과 모든 출퇴근 기록을 복구할 수 없습니다. 계속하려면 비밀번호를 입력해 주세요.</p><label>비밀번호 확인<input autoFocus type="password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} required /></label><div className="modal-actions"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className="delete-account-button" disabled={busy || !deletePassword}>{busy ? "처리 중…" : "계정 영구 삭제"}</button></div></form></Modal>}
+      {toast && <div role="status" className={`toast ${toast.error ? "error" : ""} ${toastClosing ? "closing" : ""}`}>{toast.error ? "!" : "✓"} {toast.text}</div>}
+      {modal === "confirm" && <Modal title="확인" onClose={() => setModal(null)}><p className="confirm-copy">{confirmText}</p><div className="modal-actions"><button className="secondary" onClick={() => setModal(null)}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy} onClick={() => confirmAction?.()}>{busy ? "처리 중…" : "확인"}</button></div></Modal>}
+      {modal === "delete-account" && <Modal title="회원 탈퇴" onClose={() => setModal(null)}><form className="delete-confirm-form" onSubmit={deleteAccount}><p>탈퇴하면 계정과 모든 출퇴근 기록을 복구할 수 없습니다. 계속하려면 비밀번호를 입력해 주세요.</p><label>비밀번호 확인<input autoFocus type="password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} required /></label><div className="modal-actions"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className={`delete-account-button ${busy ? "is-loading" : ""}`} disabled={busy || !deletePassword}>{busy ? "처리 중…" : "계정 영구 삭제"}</button></div></form></Modal>}
       {modal === "form" && (
         <Modal title={form.id ? "기록 상세" : "기록 추가"} onClose={() => setModal(null)}>
           <form className="record-form" onSubmit={submitForm}>
@@ -660,7 +676,7 @@ export default function App() {
             }} /></label>
             <label>근무 유형<select value={form.workType} onChange={(event) => { const workType = event.target.value as WorkType; setForm({ ...form, workType, checkInTime: workType === "출근" ? (form.checkInTime || "09:00") : "", checkOutTime: workType === "출근" ? (form.checkOutTime || "18:00") : "" }); }}>{(["출근", "반차", "연차"] as const).map((value) => <option key={value}>{value}</option>)}{form.workType === "공휴일" && <option value="공휴일" disabled>공휴일(자동)</option>}</select></label>
             {form.workType === "출근" && <div className="form-row"><TimeField label="출근 시간 (24시간)" value={form.checkInTime} onChange={(value) => setForm({ ...form, checkInTime: value })} /><TimeField label="퇴근 시간 (24시간)" value={form.checkOutTime} disabled={!form.includeCheckOut} toggle={{ checked: form.includeCheckOut, onChange: (checked) => setForm({ ...form, includeCheckOut: checked }) }} onChange={(value) => setForm({ ...form, checkOutTime: value })} /></div>}
-            <div className={`modal-actions ${editingRecord ? "split" : ""}`}>{editingRecord && <button type="button" className="delete-record" onClick={() => deleteRecord(editingRecord)}>기록 삭제</button>}<span className="action-group"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className="primary" disabled={busy}>{busy ? "저장 중…" : "저장"}</button></span></div>
+            <div className={`modal-actions ${editingRecord ? "split" : ""}`}>{editingRecord && <button type="button" className="delete-record" onClick={() => deleteRecord(editingRecord)}>기록 삭제</button>}<span className="action-group"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "저장 중…" : "저장"}</button></span></div>
           </form>
         </Modal>
       )}
@@ -1002,6 +1018,7 @@ function RecordsView({
   records,
   loading,
   mode,
+  highlightedDate,
   onMode,
   onPrev,
   onNext,
@@ -1016,6 +1033,7 @@ function RecordsView({
   records: RecordItem[];
   loading: boolean;
   mode: "calendar" | "list";
+  highlightedDate: string | null;
   onMode: (mode: "calendar" | "list") => void;
   onPrev: () => void;
   onNext: () => void;
@@ -1063,6 +1081,7 @@ function RecordsView({
             <RecordRow
               key={record.Id}
               record={record}
+              highlighted={record.WorkDate === highlightedDate}
               onEdit={() => onEdit(record)}
               onDelete={() => onDelete(record)}
             />
@@ -1073,9 +1092,9 @@ function RecordsView({
   );
 }
 
-function RecordRow({ record, onEdit, onDelete }: { record: RecordItem; onEdit: () => void; onDelete: () => void }) {
+function RecordRow({ record, highlighted, onEdit, onDelete }: { record: RecordItem; highlighted: boolean; onEdit: () => void; onDelete: () => void }) {
   return (
-    <article className="record-row">
+    <article className={`record-row ${highlighted ? "record-highlight" : ""}`}>
       <div className="record-date"><strong>{record.WorkDate.slice(8)}</strong><span>{formatDateWithWeekday(record.WorkDate)}</span></div>
       <span className={`type type-${record.WorkType}`}>{record.WorkType}</span>
       <div><small>시간</small><b>{recordTimeSummary(record)}</b></div>
