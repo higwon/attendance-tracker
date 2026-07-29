@@ -34,6 +34,11 @@
 .settings-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; background: #f3e8ff; color: #7e22ce; font-size: 20px; }
 .manage-users-card > b,.signout-card > b { color: #94a3b8; font-size: 22px; }
 .signout-card { justify-content: space-between; color: var(--danger); font-weight: 800; }
+.delete-account-card { display: grid; gap: 12px; border-color: #fecaca; }
+.delete-account-card h2 { margin: 0; color: var(--danger); }
+.delete-account-card p { margin: -4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.delete-account-button { width: 100%; border: 1px solid #dc2626; border-radius: 9px; padding: 10px 14px; background: #dc2626; color: #fff; font-weight: 800; }
+.delete-account-button:disabled { cursor: not-allowed; opacity: .55; }
 .invite-card { display: grid; grid-template-columns: minmax(220px,1.3fr) repeat(2,minmax(140px,.8fr)) 130px auto; gap: 10px; align-items: end; margin-bottom: 18px; padding: 20px; }
 .invite-card h2 { margin: 0 0 4px; font-size: 17px; }
 .invite-card p { margin: 0; color: var(--muted); font-size: 12px; }

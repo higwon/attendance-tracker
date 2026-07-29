@@ -331,6 +331,7 @@ export default function App() {
   const [profileBio, setProfileBio] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
 
   const records = useMemo(
     () => allRecords.filter((record) => record.WorkDate.startsWith(`${month}-`)),
@@ -539,6 +540,25 @@ export default function App() {
     setTab("today");
   };
 
+  const requestAccountDeletion = (event: FormEvent) => {
+    event.preventDefault();
+    ask("회원 탈퇴 시 계정과 모든 출퇴근 기록이 영구적으로 삭제됩니다. 정말 탈퇴할까요?", async () => {
+      setBusy(true);
+      try {
+        await api.deleteMe(deletePassword);
+        setDeletePassword("");
+        setModal(null);
+        setUser(null);
+        setTab("today");
+      } catch (cause) {
+        setToast({ text: cause instanceof Error ? cause.message : "회원 탈퇴를 처리하지 못했습니다.", error: true });
+        setModal(null);
+      } finally {
+        setBusy(false);
+      }
+    });
+  };
+
   if (!mounted || authLoading) return <main className="app-shell loading-shell"><span>나의 출퇴근 기록을 불러오는 중…</span></main>;
   if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); setProfilePhoto(value.profile_photo); setProfileBio(value.bio); })} />;
 
@@ -597,6 +617,12 @@ export default function App() {
                   <button className="primary" disabled={busy}>비밀번호 변경</button>
                 </form>
                 <button className="settings-card signout-card" onClick={logout}><span>로그아웃</span><b>›</b></button>
+                <form className="settings-card account-info-card delete-account-card" onSubmit={requestAccountDeletion}>
+                  <h2>회원 탈퇴</h2>
+                  <p>계정과 저장된 모든 출퇴근 기록이 영구적으로 삭제됩니다.</p>
+                  <label>비밀번호 확인<input type="password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} required /></label>
+                  <button className="delete-account-button" disabled={busy || !deletePassword}>회원 탈퇴</button>
+                </form>
               </div>
             </section>
             <UserManagement currentUserId={user.id} isAdmin={user.role === "admin"} />

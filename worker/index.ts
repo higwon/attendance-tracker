@@ -117,6 +117,26 @@ api.patch("/me/password", requireAuth, zValidator("json", z.object({
   return c.json({ ok: true });
 });
 
+api.delete("/me", requireAuth, zValidator("json", z.object({
+  password: z.string().min(1).max(72),
+})), async (c) => {
+  const userId = c.get("user").id;
+  const input = c.req.valid("json");
+  const user = await c.env.DB.prepare(
+    "SELECT password_hash, password_salt FROM users WHERE id = ?",
+  ).bind(userId).first<{ password_hash: string; password_salt: string }>();
+  if (!user || !await verifyPassword(input.password, user.password_salt, user.password_hash)) {
+    return c.json({ message: "비밀번호가 올바르지 않습니다." }, 400);
+  }
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM attendance WHERE user_id = ?").bind(userId),
+    c.env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId),
+    c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId),
+  ]);
+  await clearSession(c);
+  return c.json({ ok: true });
+});
+
 api.get("/attendance", requireAuth, async (c) => {
   const from = c.req.query("from") ?? "0000-01-01";
   const to = c.req.query("to") ?? "9999-12-31";
