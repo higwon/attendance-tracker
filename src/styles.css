@@ -186,6 +186,61 @@
 .account-page .account-info-card { padding: 22px; }
 .account-page .user-list-card { margin-top: 18px; }
 .record-positive { color: #047857; }
+.account-page { width: min(100%, 800px); }
+.account-page-heading { margin-bottom: 30px; }
+.account-page-heading > p { margin: 0 0 7px; color: var(--primary); font-size: 13px; font-weight: 900; }
+.account-page-heading h1 { margin: 0; font-size: 30px; letter-spacing: -.04em; }
+.account-page-heading > span { display: block; margin-top: 9px; color: var(--muted); font-size: 14px; }
+.account-section { margin-top: 28px; }
+.account-section-heading { margin-bottom: 12px; }
+.account-section-heading h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.account-section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.account-page .settings-card { border-radius: 14px; box-shadow: 0 2px 8px #0f172a0a; }
+.account-page .account-profile-card { display: grid; justify-items: stretch; gap: 22px; padding: 24px; text-align: left; }
+.profile-header { display: flex; align-items: center; gap: 14px; }
+.account-page .profile-header .profile-avatar { width: 64px; height: 64px; flex: none; border-radius: 18px; box-shadow: none; }
+.profile-summary { min-width: 0; flex: 1; }
+.profile-summary > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.profile-summary h3 { margin: 0; overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-summary p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.profile-summary .role-chip { padding: 5px 8px; font-size: 10px; }
+.account-page .profile-photo-actions { align-items: center; flex: none; margin: 0; }
+.account-page .profile-photo-actions label { padding: 7px 10px; font-size: 12px; }
+.text-button { border: 0; padding: 6px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; }
+.text-button:hover { color: var(--danger); }
+.account-fields,.security-card { display: grid; gap: 16px; }
+.account-page .account-fields label,.account-page .security-card label,.delete-confirm-form label { display: grid; gap: 7px; margin: 0; color: #475569; font-size: 13px; font-weight: 800; text-align: left; }
+.account-page input,.account-page textarea,.account-page select,.delete-confirm-form input { width: 100%; min-height: 42px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; background: #fff; color: var(--ink); outline: none; }
+.account-page input:focus,.account-page textarea:focus,.account-page select:focus,.delete-confirm-form input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #4f46e51c; }
+.account-form-actions { display: flex; justify-content: flex-end; }
+.account-page .account-form-actions .primary { width: auto; min-height: 42px; padding-inline: 18px; }
+.account-page .security-card { padding: 24px; }
+.account-user-list { overflow: hidden; }
+.account-user-row { display: flex; align-items: center; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.account-user-row:last-child { border-bottom: 0; }
+.account-user-row .user-identity { flex: 1; }
+.account-user-controls { display: flex; align-items: center; gap: 12px; }
+.account-user-controls select { width: 132px; min-height: 38px; padding: 7px 10px; font-size: 12px; }
+.account-user-controls .last-seen { width: 78px; text-align: right; }
+.account-logout-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 28px; padding: 2px 2px 20px; border-bottom: 1px solid var(--line); }
+.account-logout-row h2 { margin: 0; font-size: 16px; }
+.account-logout-row p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.account-logout-row button { min-height: 40px; }
+.danger-zone { margin-top: 18px; border: 1px solid #fecaca; border-radius: 12px; background: #fff; overflow: hidden; }
+.danger-zone summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 17px; cursor: pointer; list-style: none; }
+.danger-zone summary::-webkit-details-marker { display: none; }
+.danger-zone summary span { display: grid; gap: 3px; }
+.danger-zone summary b { color: #991b1b; font-size: 14px; }
+.danger-zone summary small { color: var(--muted); font-size: 11px; }
+.danger-zone summary i { color: #94a3b8; font-style: normal; transition: transform .15s ease; }
+.danger-zone[open] summary i { transform: rotate(180deg); }
+.danger-zone-content { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 17px; border-top: 1px solid #fee2e2; background: #fffafa; }
+.danger-zone-content strong { color: #991b1b; font-size: 14px; }
+.danger-zone-content p { margin: 4px 0 0; color: #7f1d1d; font-size: 12px; }
+.danger-outline-button { min-height: 40px; flex: none; border: 1px solid #dc2626; border-radius: 10px; padding: 9px 14px; background: #fff; color: #dc2626; font-weight: 800; }
+.delete-confirm-form { display: grid; gap: 18px; }
+.delete-confirm-form > p { margin: 0; color: #475569; font-size: 14px; line-height: 1.65; }
+.delete-confirm-form .delete-account-button { width: auto; min-height: 42px; padding-inline: 16px; }
 .time-field-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .record-form .time-field-label input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
 .week-chart .bar-item { display: grid; grid-template-rows: 54px minmax(0, 1fr) 28px; }
@@ -237,4 +292,17 @@
   .day-off-chart-state span { max-width: 100%; overflow: hidden; padding: 4px 5px; font-size: 9px; text-overflow: ellipsis; }
   .calendar-grid small { display: block; }
   .calendar-grid strong.calendar-work-summary { display: flex; }
+  .account-page-heading { margin-bottom: 24px; }
+  .account-page-heading h1 { font-size: 26px; }
+  .account-section { margin-top: 24px; }
+  .account-page .account-profile-card,.account-page .security-card { padding: 19px; }
+  .profile-header { align-items: flex-start; flex-wrap: wrap; }
+  .profile-summary { min-width: calc(100% - 82px); }
+  .account-page .profile-photo-actions { width: 100%; padding-left: 78px; }
+  .account-user-row { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .account-user-row .user-identity { width: 100%; }
+  .account-user-controls { width: 100%; justify-content: space-between; padding-left: 49px; }
+  .account-user-controls .last-seen { width: auto; }
+  .account-logout-row,.danger-zone-content { align-items: flex-start; flex-direction: column; }
+  .account-logout-row button,.danger-zone-content button { width: 100%; }
 }

@@ -322,7 +322,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
-  const [modal, setModal] = useState<"form" | "confirm" | null>(null);
+  const [modal, setModal] = useState<"form" | "confirm" | "delete-account" | null>(null);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
   const [confirmText, setConfirmText] = useState("");
   const [form, setForm] = useState<RecordForm>(emptyForm(seoulParts().date));
@@ -540,23 +540,20 @@ export default function App() {
     setTab("today");
   };
 
-  const requestAccountDeletion = (event: FormEvent) => {
+  const deleteAccount = async (event: FormEvent) => {
     event.preventDefault();
-    ask("회원 탈퇴 시 계정과 모든 출퇴근 기록이 영구적으로 삭제됩니다. 정말 탈퇴할까요?", async () => {
-      setBusy(true);
-      try {
-        await api.deleteMe(deletePassword);
-        setDeletePassword("");
-        setModal(null);
-        setUser(null);
-        setTab("today");
-      } catch (cause) {
-        setToast({ text: cause instanceof Error ? cause.message : "회원 탈퇴를 처리하지 못했습니다.", error: true });
-        setModal(null);
-      } finally {
-        setBusy(false);
-      }
-    });
+    setBusy(true);
+    try {
+      await api.deleteMe(deletePassword);
+      setDeletePassword("");
+      setModal(null);
+      setUser(null);
+      setTab("today");
+    } catch (cause) {
+      setToast({ text: cause instanceof Error ? cause.message : "회원 탈퇴를 처리하지 못했습니다.", error: true });
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!mounted || authLoading) return <main className="app-shell loading-shell"><span>나의 출퇴근 기록을 불러오는 중…</span></main>;
@@ -589,12 +586,17 @@ export default function App() {
         {tab === "stats" && <StatsView month={month} stats={stats} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} />}
         {tab === "account" && (
           <div className="account-page">
-            <section className="page-heading"><div><p>계정 관리</p><h1>내 계정</h1></div><span className="role-chip">{user.role === "admin" ? "관리자" : "일반 사용자"}</span></section>
-            <section className="account-layout deploy-account-layout">
-              <form className="settings-card profile-card" onSubmit={saveProfile}>
-                <Avatar user={{ ...user, profile_photo: profilePhoto }} className="profile-avatar" />
-                <div className="profile-copy"><h2>{user.display_name}</h2><p>@{user.username}</p></div>
-                <div className="profile-photo-actions"><label className="secondary">사진 선택<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async (event) => {
+            <header className="account-page-heading">
+              <p>계정</p><h1>계정 설정</h1><span>프로필 정보와 보안 설정을 관리할 수 있습니다.</span>
+            </header>
+
+            <section className="account-section">
+              <div className="account-section-heading"><h2>프로필 정보</h2><p>다른 사용자에게 표시되는 정보를 관리합니다.</p></div>
+              <form className="settings-card profile-card account-profile-card" onSubmit={saveProfile}>
+                <div className="profile-header">
+                  <Avatar user={{ ...user, profile_photo: profilePhoto }} className="profile-avatar" />
+                  <div className="profile-summary"><div><h3>{user.display_name}</h3><span className="role-chip">{user.role === "admin" ? "관리자" : "일반 사용자"}</span></div><p>@{user.username}</p></div>
+                  <div className="profile-photo-actions"><label className="secondary">사진 변경<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (!file) return;
                   try {
@@ -604,34 +606,46 @@ export default function App() {
                   } finally {
                     event.target.value = "";
                   }
-                }} /></label>{profilePhoto && <button type="button" className="secondary" onClick={() => setProfilePhoto(null)}>사진 삭제</button>}</div>
-                <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
-                <label>사용자 설명<textarea value={profileBio} maxLength={120} rows={3} placeholder="소속이나 담당 업무를 간단히 적어보세요." onChange={(event) => setProfileBio(event.target.value)} /></label>
-                <button className="primary" disabled={busy}>변경사항 저장</button>
+                }} /></label>{profilePhoto && <button type="button" className="text-button" onClick={() => setProfilePhoto(null)}>삭제</button>}</div>
+                </div>
+                <div className="account-fields">
+                  <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
+                  <label>사용자 설명<textarea value={profileBio} maxLength={120} rows={3} placeholder="소속이나 담당 업무를 간단히 적어보세요." onChange={(event) => setProfileBio(event.target.value)} /></label>
+                </div>
+                <div className="account-form-actions"><button className="primary" disabled={busy}>변경사항 저장</button></div>
               </form>
-              <div className="settings-stack">
-                <form className="settings-card account-info-card password-card" onSubmit={changePassword}>
-                  <h2>비밀번호 변경</h2>
+            </section>
+
+            <section className="account-section">
+              <div className="account-section-heading"><h2>계정 및 보안</h2><p>안전한 계정 사용을 위해 비밀번호를 변경합니다.</p></div>
+                <form className="settings-card account-info-card password-card security-card" onSubmit={changePassword}>
                   <label>현재 비밀번호<input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
                   <label>새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
-                  <button className="primary" disabled={busy}>비밀번호 변경</button>
+                  <div className="account-form-actions"><button className="primary" disabled={busy}>비밀번호 변경</button></div>
                 </form>
-                <button className="settings-card signout-card" onClick={logout}><span>로그아웃</span><b>›</b></button>
-                <form className="settings-card account-info-card delete-account-card" onSubmit={requestAccountDeletion}>
-                  <h2>회원 탈퇴</h2>
-                  <p>계정과 저장된 모든 출퇴근 기록이 영구적으로 삭제됩니다.</p>
-                  <label>비밀번호 확인<input type="password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} required /></label>
-                  <button className="delete-account-button" disabled={busy || !deletePassword}>회원 탈퇴</button>
-                </form>
-              </div>
             </section>
-            <UserManagement currentUserId={user.id} isAdmin={user.role === "admin"} />
+
+            <section className="account-section">
+              <div className="account-section-heading"><h2>함께 사용하는 사용자</h2><p>이 출퇴근 기록 서비스를 함께 사용하는 계정입니다.</p></div>
+              <UserManagement currentUserId={user.id} isAdmin={user.role === "admin"} />
+            </section>
+
+            <section className="account-logout-row">
+              <div><h2>로그아웃</h2><p>현재 브라우저에서 계정 연결을 종료합니다.</p></div>
+              <button className="secondary" onClick={logout}>로그아웃</button>
+            </section>
+
+            <details className="danger-zone">
+              <summary><span><b>위험 영역</b><small>계정 삭제와 관련된 설정</small></span><i>⌄</i></summary>
+              <div className="danger-zone-content"><div><strong>회원 탈퇴</strong><p>계정과 저장된 모든 출퇴근 기록이 영구적으로 삭제됩니다.</p></div><button className="danger-outline-button" onClick={() => { setDeletePassword(""); setModal("delete-account"); }}>회원 탈퇴</button></div>
+            </details>
           </div>
         )}
       </div>
 
       {toast && <div role="status" className={`toast ${toast.error ? "error" : ""}`}>{toast.error ? "!" : "✓"} {toast.text}</div>}
       {modal === "confirm" && <Modal title="확인" onClose={() => setModal(null)}><p className="confirm-copy">{confirmText}</p><div className="modal-actions"><button className="secondary" onClick={() => setModal(null)}>취소</button><button className="primary" disabled={busy} onClick={() => confirmAction?.()}>{busy ? "처리 중…" : "확인"}</button></div></Modal>}
+      {modal === "delete-account" && <Modal title="회원 탈퇴" onClose={() => setModal(null)}><form className="delete-confirm-form" onSubmit={deleteAccount}><p>탈퇴하면 계정과 모든 출퇴근 기록을 복구할 수 없습니다. 계속하려면 비밀번호를 입력해 주세요.</p><label>비밀번호 확인<input autoFocus type="password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} required /></label><div className="modal-actions"><button type="button" className="secondary" onClick={() => setModal(null)}>취소</button><button className="delete-account-button" disabled={busy || !deletePassword}>{busy ? "처리 중…" : "계정 영구 삭제"}</button></div></form></Modal>}
       {modal === "form" && (
         <Modal title={form.id ? "기록 상세" : "기록 추가"} onClose={() => setModal(null)}>
           <form className="record-form" onSubmit={submitForm}>
@@ -1340,17 +1354,15 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
   }, [load]);
 
   return (
-    <section className={`user-list-card deploy-user-management ${isAdmin ? "admin" : "directory"}`}>
-      <div className="user-list-header">
-        <span>사용자</span>{isAdmin && <><span>권한</span><span>마지막 활동</span></>}
-      </div>
+    <div className={`settings-card account-user-list ${isAdmin ? "admin" : "directory"}`}>
       {users.map((managedUser) => (
-        <article className="user-row" key={managedUser.id}>
+        <article className="account-user-row" key={managedUser.id}>
           <div className="user-identity">
             <Avatar user={managedUser} />
             <div><strong>{managedUser.display_name}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
           </div>
-          {isAdmin && <><select
+          {isAdmin && <div className="account-user-controls"><select
+            aria-label={`${managedUser.display_name} 권한`}
             value={managedUser.role}
             disabled={managedUser.id === currentUserId}
             onChange={async (event) => {
@@ -1361,11 +1373,11 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
             <option value="user">일반 사용자</option>
             <option value="admin">관리자</option>
           </select>
-          <span className="last-seen">
+          <span className="last-seen" title="마지막 활동">
             {formatLastActive(managedUser.last_active_at ?? null)}
-          </span></>}
+          </span></div>}
         </article>
       ))}
-    </section>
+    </div>
   );
 }
