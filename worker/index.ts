@@ -16,7 +16,7 @@ app.onError((error, c) => {
 
 const credentials = z.object({
   username: z.string().trim()
-    .min(4, "아이디는 4자 이상 입력해 주세요.")
+    .min(2, "아이디는 2자 이상 입력해 주세요.")
     .max(40, "아이디는 40자 이하로 입력해 주세요.")
     .regex(/^[a-zA-Z0-9._-]+$/, "아이디는 영문, 숫자, 마침표, 밑줄, 하이픈만 사용할 수 있습니다."),
   password: z.string()
@@ -58,15 +58,20 @@ api.post("/auth/register", zValidator("json", credentials.extend({
   return c.json({ ok: true }, 201);
 });
 
-api.post("/auth/login", zValidator("json", credentials), async (c) => {
+api.post("/auth/login", zValidator("json", credentials, (result, c) => {
+  if (!result.success) {
+    return c.json({ message: result.error.issues[0]?.message ?? "로그인 정보를 확인해 주세요." }, 400);
+  }
+}), async (c) => {
   const input = c.req.valid("json");
   const user = await c.env.DB.prepare(
     "SELECT id, password_hash, password_salt, is_active FROM users WHERE username = ? COLLATE NOCASE",
   ).bind(input.username).first<{
     id: string; password_hash: string; password_salt: string; is_active: number;
   }>();
-  if (!user || !await verifyPassword(input.password, user.password_salt, user.password_hash)) {
-    return c.json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." }, 401);
+  if (!user) return c.json({ message: "존재하지 않는 아이디입니다." }, 401);
+  if (!await verifyPassword(input.password, user.password_salt, user.password_hash)) {
+    return c.json({ message: "비밀번호가 올바르지 않습니다." }, 401);
   }
   if (!user.is_active) return c.json({ message: "비활성화된 계정입니다." }, 403);
   const loginAt = new Date().toISOString();
