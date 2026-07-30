@@ -1429,10 +1429,10 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
   return (
     <div className={`settings-card account-user-list ${isAdmin ? "admin" : "directory"}`}>
       {users.map((managedUser) => (
-        <article className="account-user-row" key={managedUser.id}>
+        <article className={`account-user-row ${managedUser.role === "admin" ? "is-admin" : ""}`} key={managedUser.id}>
           <div className="user-identity">
             <Avatar user={managedUser} />
-            <div><strong>{managedUser.display_name}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
+            <div><strong className="user-name-line">{managedUser.display_name}{managedUser.role === "admin" && <span className="admin-marker" title="관리자"><span aria-hidden="true">★</span> 관리자</span>}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
           </div>
           {isAdmin && <div className="account-user-controls"><select
             aria-label={`${managedUser.display_name} 권한`}
