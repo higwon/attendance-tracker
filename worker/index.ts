@@ -220,6 +220,7 @@ const postInput = z.object({
   title: z.string().trim().min(1).max(100),
   content: z.string().trim().min(1).max(5_000),
   isNotice: z.boolean().default(false),
+  isPrivate: z.boolean().default(false),
 });
 
 api.get("/posts", requireAuth, async (c) => {
@@ -227,30 +228,54 @@ api.get("/posts", requireAuth, async (c) => {
   const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : 1;
   const pageSize = 20;
   const offset = (page - 1) * pageSize;
+  const currentUser = c.get("user");
   const [posts, count] = await Promise.all([
     c.env.DB.prepare(
-      `SELECT p.id, p.author_id, p.title, p.content, p.is_notice, p.created_at, p.updated_at,
+      `SELECT p.id, p.author_id, p.title, p.content, p.is_notice, p.is_private, p.created_at, p.updated_at,
               u.username AS author_username, u.display_name AS author_display_name,
               u.profile_photo AS author_profile_photo, u.role AS author_role
        FROM posts p JOIN users u ON u.id = p.author_id
        ORDER BY p.is_notice DESC, p.created_at DESC
        LIMIT ? OFFSET ?`,
-    ).bind(pageSize, offset).all(),
+    ).bind(pageSize, offset).all<{
+      id: string; author_id: string; title: string; content: string; is_notice: number; is_private: number;
+      created_at: string; updated_at: string; author_username: string; author_display_name: string;
+      author_profile_photo: string | null; author_role: "user" | "admin";
+    }>(),
     c.env.DB.prepare("SELECT COUNT(*) AS total FROM posts").first<{ total: number }>(),
   ]);
-  return c.json({ items: posts.results, total: count?.total ?? 0, page, pageSize });
+  const items = posts.results.map((post) => {
+    const canView = !post.is_private || post.author_id === currentUser.id || currentUser.role === "admin";
+    return canView
+      ? { ...post, can_view: true }
+      : {
+        ...post,
+        author_id: "",
+        title: "비밀글입니다",
+        content: "",
+        author_username: "",
+        author_display_name: "비공개",
+        author_profile_photo: null,
+        author_role: "user" as const,
+        can_view: false,
+      };
+  });
+  return c.json({ items, total: count?.total ?? 0, page, pageSize });
 });
 
 api.post("/posts", requireAuth, zValidator("json", postInput), async (c) => {
   const input = c.req.valid("json");
   const user = c.get("user");
+  if (input.isNotice && input.isPrivate) {
+    return c.json({ message: "공지와 비밀글은 동시에 설정할 수 없습니다." }, 400);
+  }
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO posts (id, author_id, title, content, is_notice, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO posts (id, author_id, title, content, is_notice, is_private, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(
     crypto.randomUUID(), user.id, input.title, input.content,
-    user.role === "admin" && input.isNotice ? 1 : 0, now, now,
+    user.role === "admin" && input.isNotice ? 1 : 0, input.isPrivate ? 1 : 0, now, now,
   ).run();
   return c.json({ ok: true }, 201);
 });
@@ -258,6 +283,9 @@ api.post("/posts", requireAuth, zValidator("json", postInput), async (c) => {
 api.patch("/posts/:id", requireAuth, zValidator("json", postInput), async (c) => {
   const input = c.req.valid("json");
   const user = c.get("user");
+  if (input.isNotice && input.isPrivate) {
+    return c.json({ message: "공지와 비밀글은 동시에 설정할 수 없습니다." }, 400);
+  }
   const post = await c.env.DB.prepare("SELECT author_id FROM posts WHERE id = ?")
     .bind(c.req.param("id")).first<{ author_id: string }>();
   if (!post) return c.json({ message: "게시글을 찾을 수 없습니다." }, 404);
@@ -265,10 +293,10 @@ api.patch("/posts/:id", requireAuth, zValidator("json", postInput), async (c) =>
     return c.json({ message: "게시글을 수정할 권한이 없습니다." }, 403);
   }
   await c.env.DB.prepare(
-    "UPDATE posts SET title = ?, content = ?, is_notice = ?, updated_at = ? WHERE id = ?",
+    "UPDATE posts SET title = ?, content = ?, is_notice = ?, is_private = ?, updated_at = ? WHERE id = ?",
   ).bind(
     input.title, input.content, user.role === "admin" && input.isNotice ? 1 : 0,
-    new Date().toISOString(), c.req.param("id"),
+    input.isPrivate ? 1 : 0, new Date().toISOString(), c.req.param("id"),
   ).run();
   return c.json({ ok: true });
 });

@@ -235,6 +235,7 @@
 .posts-list { display: grid; gap: 13px; }
 .post-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; background: #fff; box-shadow: 0 3px 9px #0f172a0d; }
 .post-card.notice { border-color: #c4b5fd; background: linear-gradient(135deg,#faf8ff,#fff 52%); }
+.post-card.private { border-color: #cbd5e1; }
 .post-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .post-author { display: flex; min-width: 0; align-items: center; gap: 11px; }
 .post-author > span { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 12px; background: #eef2ff; color: var(--primary); font-weight: 900; }
@@ -247,6 +248,7 @@
 .post-actions button.danger:hover { background: #fff1f2; color: var(--danger); }
 .post-title-line { display: flex; align-items: center; gap: 8px; margin-top: 17px; }
 .post-title-line > span { flex: none; border-radius: 999px; padding: 4px 8px; background: #ede9fe; color: #6d28d9; font-size: 10px; font-weight: 900; }
+.post-title-line > span.private-label { background: #f1f5f9; color: #475569; }
 .post-title-line h2 { margin: 0; overflow-wrap: anywhere; font-size: 18px; letter-spacing: -.02em; }
 .post-content { margin: 10px 0 0; color: #334155; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; white-space: pre-wrap; }
 .post-edited { display: block; margin-top: 10px; }
@@ -261,6 +263,14 @@
 .post-form input:focus,.post-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #4f46e51c; }
 .post-form .notice-toggle { display: flex; align-items: center; gap: 8px; width: max-content; }
 .post-form .notice-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); box-shadow: none; }
+.post-options { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.post-form .notice-toggle input:disabled { cursor: not-allowed; opacity: .45; }
+.private-post-note { margin: -6px 0 0; border-radius: 9px; padding: 9px 11px; background: #f8fafc; color: #475569; font-size: 12px; line-height: 1.5; }
+.private-post-placeholder { display: flex; align-items: center; gap: 12px; min-height: 48px; color: #64748b; }
+.private-post-placeholder > span { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 12px; background: #f1f5f9; font-size: 16px; }
+.private-post-placeholder > div { display: grid; gap: 4px; }
+.private-post-placeholder strong { color: #334155; font-size: 14px; }
+.private-post-placeholder small { font-size: 11px; }
 .post-delete-confirm { width: auto; min-width: 84px; }
 .account-user-controls { display: flex; align-items: center; gap: 12px; }
 .account-user-controls select { width: 132px; min-height: 38px; padding: 7px 10px; font-size: 12px; }

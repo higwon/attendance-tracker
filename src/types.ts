@@ -27,6 +27,8 @@ export type Post = {
   title: string;
   content: string;
   is_notice: number;
+  is_private: number;
+  can_view: boolean;
   created_at: string;
   updated_at: string;
   author_username: string;

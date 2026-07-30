@@ -47,7 +47,7 @@ export const api = {
   updateUser: (id: string, value: { role: "user" | "admin" }) =>
     request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(value) }),
   posts: (page: number) => request<{ items: Post[]; total: number; page: number; pageSize: number }>(`/posts?page=${page}`),
-  savePost: (value: { id?: string; title: string; content: string; isNotice: boolean }) =>
+  savePost: (value: { id?: string; title: string; content: string; isNotice: boolean; isPrivate: boolean }) =>
     request(value.id ? `/posts/${value.id}` : "/posts", {
       method: value.id ? "PATCH" : "POST",
       body: JSON.stringify(value),

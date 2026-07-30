@@ -1395,7 +1395,7 @@ function PostsView({ user }: { user: User }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [editor, setEditor] = useState<{ id?: string; title: string; content: string; isNotice: boolean } | null>(null);
+  const [editor, setEditor] = useState<{ id?: string; title: string; content: string; isNotice: boolean; isPrivate: boolean } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
   const [error, setError] = useState("");
   const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -1453,7 +1453,7 @@ function PostsView({ user }: { user: User }) {
     <div className="posts-page">
       <section className="page-heading posts-heading">
         <div><p>함께 나누는 소식</p><h1>소식</h1><span>공지와 간단한 이야기를 구성원들과 공유하세요.</span></div>
-        <button className="primary" onClick={() => { setError(""); setEditor({ title: "", content: "", isNotice: false }); }}>＋ 글쓰기</button>
+        <button className="primary" onClick={() => { setError(""); setEditor({ title: "", content: "", isNotice: false, isPrivate: false }); }}>＋ 글쓰기</button>
       </section>
 
       {error && <div role="alert" className="posts-error">{error}</div>}
@@ -1466,17 +1466,19 @@ function PostsView({ user }: { user: User }) {
           {posts.map((post) => {
             const canManage = post.author_id === user.id || user.role === "admin";
             return (
-              <article className={`post-card ${post.is_notice ? "notice" : ""}`} key={post.id}>
+              <article className={`post-card ${post.is_notice ? "notice" : ""} ${post.is_private ? "private" : ""}`} key={post.id}>
+                {!post.can_view ? <div className="private-post-placeholder"><span aria-hidden="true">🔒</span><div><strong>비밀글입니다</strong><small>작성자와 관리자만 확인할 수 있습니다.</small></div></div> : <>
                 <header>
                   <div className="post-author">
                     <Avatar user={{ display_name: post.author_display_name, profile_photo: post.author_profile_photo }} />
                     <div><strong>{post.author_display_name}{post.author_id === user.id && <span className="self-marker">나</span>}{post.author_role === "admin" && <span className="admin-marker"><span aria-hidden="true">★</span> 관리자</span>}</strong><small>@{post.author_username} · {formatPostDate(post.created_at)}</small></div>
                   </div>
-                  {canManage && <div className="post-actions"><button onClick={() => { setError(""); setEditor({ id: post.id, title: post.title, content: post.content, isNotice: Boolean(post.is_notice) }); }}>수정</button><button className="danger" onClick={() => setDeleteTarget(post)}>삭제</button></div>}
+                  {canManage && <div className="post-actions"><button onClick={() => { setError(""); setEditor({ id: post.id, title: post.title, content: post.content, isNotice: Boolean(post.is_notice), isPrivate: Boolean(post.is_private) }); }}>수정</button><button className="danger" onClick={() => setDeleteTarget(post)}>삭제</button></div>}
                 </header>
-                <div className="post-title-line">{Boolean(post.is_notice) && <span>공지</span>}<h2>{post.title}</h2></div>
+                <div className="post-title-line">{Boolean(post.is_notice) && <span>공지</span>}{Boolean(post.is_private) && <span className="private-label">🔒 비밀</span>}<h2>{post.title}</h2></div>
                 <p className="post-content">{post.content}</p>
                 {post.updated_at !== post.created_at && <small className="post-edited">수정됨</small>}
+                </>}
               </article>
             );
           })}
@@ -1485,7 +1487,7 @@ function PostsView({ user }: { user: User }) {
 
       {totalPages > 1 && <nav className="posts-pagination" aria-label="소식 페이지"><button className="secondary" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>이전</button><span>{page} / {totalPages}</span><button className="secondary" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>다음</button></nav>}
 
-      {editor && <Modal title={editor.id ? "게시글 수정" : "새 게시글"} onClose={() => !busy && setEditor(null)}><form className="post-form" onSubmit={submitPost}><label>제목<input autoFocus required maxLength={100} value={editor.title} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>내용<textarea required maxLength={5_000} rows={9} value={editor.content} onChange={(event) => setEditor({ ...editor, content: event.target.value })} /></label>{user.role === "admin" && <label className="notice-toggle"><input type="checkbox" checked={editor.isNotice} onChange={(event) => setEditor({ ...editor, isNotice: event.target.checked })} /> 공지로 등록</label>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setEditor(null)}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "저장 중…" : "저장"}</button></div></form></Modal>}
+      {editor && <Modal title={editor.id ? "게시글 수정" : "새 게시글"} onClose={() => !busy && setEditor(null)}><form className="post-form" onSubmit={submitPost}><label>제목<input autoFocus required maxLength={100} value={editor.title} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>내용<textarea required maxLength={5_000} rows={9} value={editor.content} onChange={(event) => setEditor({ ...editor, content: event.target.value })} /></label><div className="post-options"><label className="notice-toggle"><input type="checkbox" checked={editor.isPrivate} disabled={editor.isNotice} onChange={(event) => setEditor({ ...editor, isPrivate: event.target.checked, isNotice: false })} /> 비밀글</label>{user.role === "admin" && <label className="notice-toggle"><input type="checkbox" checked={editor.isNotice} disabled={editor.isPrivate} onChange={(event) => setEditor({ ...editor, isNotice: event.target.checked, isPrivate: false })} /> 공지로 등록</label>}</div>{editor.isPrivate && <p className="private-post-note">비밀글은 작성자와 관리자만 확인할 수 있습니다.</p>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setEditor(null)}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "저장 중…" : "저장"}</button></div></form></Modal>}
       {deleteTarget && <Modal title="게시글 삭제" onClose={() => !busy && setDeleteTarget(null)}><p className="confirm-copy">‘{deleteTarget.title}’ 게시글을 삭제할까요? 삭제한 글은 복구할 수 없습니다.</p><div className="modal-actions"><button className="secondary" disabled={busy} onClick={() => setDeleteTarget(null)}>취소</button><button className={`delete-account-button post-delete-confirm ${busy ? "is-loading" : ""}`} disabled={busy} onClick={() => void removePost()}>{busy ? "삭제 중…" : "삭제"}</button></div></Modal>}
     </div>
   );
