@@ -2,10 +2,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { isHoliday } from "korean-holidays";
 import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 import { api } from "./api";
-import type { Attendance, User, WorkType as ApiWorkType } from "./types";
+import type { Attendance, Post, User, WorkType as ApiWorkType } from "./types";
 
 export type WorkType = "출근" | "연차" | "반차" | "공휴일";
-type Tab = "today" | "records" | "stats" | "account";
+type Tab = "today" | "records" | "stats" | "news" | "account";
 
 export type RecordItem = {
   Id: string;
@@ -584,9 +584,9 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">✓</span>나의 출퇴근 기록</div>
         <nav aria-label="주 메뉴">
-          {(["today", "records", "stats", "account"] as const).map((key) => (
+          {(["today", "records", "stats", "news", "account"] as const).map((key) => (
             <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-              {{ today: "오늘", records: "기록", stats: "통계", account: "계정" }[key]}
+              {{ today: "오늘", records: "기록", stats: "통계", news: "소식", account: "계정" }[key]}
             </button>
           ))}
         </nav>
@@ -602,6 +602,7 @@ export default function App() {
         {tab === "today" && <TodayView clock={clock} today={today} records={allRecords} workMinutes={workMinutes} summary={weeklySummary} busy={busy} onAction={quickAction} onEdit={() => openForm(today)} />}
         {tab === "records" && <RecordsView todayDate={clock.date} now={clock.time} month={month} records={records} loading={loading} mode={viewMode} highlightedDate={highlightedRecordDate} onMode={setViewMode} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onAdd={() => openForm()} onAddDate={(date) => openForm(undefined, date)} onEdit={openForm} onDelete={deleteRecord} />}
         {tab === "stats" && <StatsView month={month} stats={stats} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} />}
+        {tab === "news" && <PostsView user={user} />}
         {tab === "account" && (
           <div className="account-page">
             <header className="account-page-heading">
@@ -1380,6 +1381,118 @@ function formatLastActive(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function PostsView({ user }: { user: User }) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [editor, setEditor] = useState<{ id?: string; title: string; content: string; isNotice: boolean } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
+  const [error, setError] = useState("");
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api.posts(page);
+      setPosts(result.items);
+      setTotal(result.total);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "소식을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => { void loadPosts(); }, [loadPosts]);
+
+  const submitPost = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editor) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.savePost(editor);
+      setEditor(null);
+      if (page !== 1) setPage(1);
+      else await loadPosts();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "게시글을 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removePost = async () => {
+    if (!deleteTarget) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.deletePost(deleteTarget.id);
+      setDeleteTarget(null);
+      if (posts.length === 1 && page > 1) setPage((value) => value - 1);
+      else await loadPosts();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "게시글을 삭제하지 못했습니다.");
+      setDeleteTarget(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="posts-page">
+      <section className="page-heading posts-heading">
+        <div><p>함께 나누는 소식</p><h1>소식</h1><span>공지와 간단한 이야기를 구성원들과 공유하세요.</span></div>
+        <button className="primary" onClick={() => { setError(""); setEditor({ title: "", content: "", isNotice: false }); }}>＋ 글쓰기</button>
+      </section>
+
+      {error && <div role="alert" className="posts-error">{error}</div>}
+      {loading ? (
+        <div className="empty posts-empty">소식을 불러오는 중입니다…</div>
+      ) : posts.length === 0 ? (
+        <div className="empty posts-empty"><strong>아직 등록된 소식이 없어요</strong><span>첫 번째 소식을 남겨보세요.</span></div>
+      ) : (
+        <section className="posts-list">
+          {posts.map((post) => {
+            const canManage = post.author_id === user.id || user.role === "admin";
+            return (
+              <article className={`post-card ${post.is_notice ? "notice" : ""}`} key={post.id}>
+                <header>
+                  <div className="post-author">
+                    <Avatar user={{ display_name: post.author_display_name, profile_photo: post.author_profile_photo }} />
+                    <div><strong>{post.author_display_name}{post.author_id === user.id && <span className="self-marker">나</span>}{post.author_role === "admin" && <span className="admin-marker"><span aria-hidden="true">★</span> 관리자</span>}</strong><small>@{post.author_username} · {formatPostDate(post.created_at)}</small></div>
+                  </div>
+                  {canManage && <div className="post-actions"><button onClick={() => { setError(""); setEditor({ id: post.id, title: post.title, content: post.content, isNotice: Boolean(post.is_notice) }); }}>수정</button><button className="danger" onClick={() => setDeleteTarget(post)}>삭제</button></div>}
+                </header>
+                <div className="post-title-line">{Boolean(post.is_notice) && <span>공지</span>}<h2>{post.title}</h2></div>
+                <p className="post-content">{post.content}</p>
+                {post.updated_at !== post.created_at && <small className="post-edited">수정됨</small>}
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {totalPages > 1 && <nav className="posts-pagination" aria-label="소식 페이지"><button className="secondary" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>이전</button><span>{page} / {totalPages}</span><button className="secondary" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>다음</button></nav>}
+
+      {editor && <Modal title={editor.id ? "게시글 수정" : "새 게시글"} onClose={() => !busy && setEditor(null)}><form className="post-form" onSubmit={submitPost}><label>제목<input autoFocus required maxLength={100} value={editor.title} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>내용<textarea required maxLength={5_000} rows={9} value={editor.content} onChange={(event) => setEditor({ ...editor, content: event.target.value })} /></label>{user.role === "admin" && <label className="notice-toggle"><input type="checkbox" checked={editor.isNotice} onChange={(event) => setEditor({ ...editor, isNotice: event.target.checked })} /> 공지로 등록</label>}<div className="modal-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setEditor(null)}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "저장 중…" : "저장"}</button></div></form></Modal>}
+      {deleteTarget && <Modal title="게시글 삭제" onClose={() => !busy && setDeleteTarget(null)}><p className="confirm-copy">‘{deleteTarget.title}’ 게시글을 삭제할까요? 삭제한 글은 복구할 수 없습니다.</p><div className="modal-actions"><button className="secondary" disabled={busy} onClick={() => setDeleteTarget(null)}>취소</button><button className={`delete-account-button post-delete-confirm ${busy ? "is-loading" : ""}`} disabled={busy} onClick={() => void removePost()}>{busy ? "삭제 중…" : "삭제"}</button></div></Modal>}
+    </div>
+  );
+}
+
+function formatPostDate(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function Avatar({

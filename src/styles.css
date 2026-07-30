@@ -225,6 +225,40 @@
 .admin-marker { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #ddd6fe; border-radius: 999px; padding: 3px 7px; background: #f5f3ff; color: #6d28d9; font-size: 10px; font-weight: 900; line-height: 1; }
 .admin-marker > span { color: #7c3aed; font-size: 9px; }
 .self-marker { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 7px; background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 900; line-height: 1; }
+
+.posts-page { width: min(100%,900px); margin: 0 auto; }
+.posts-heading { align-items: center; }
+.posts-heading > div > span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.posts-list { display: grid; gap: 13px; }
+.post-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; background: #fff; box-shadow: 0 3px 9px #0f172a0d; }
+.post-card.notice { border-color: #c4b5fd; background: linear-gradient(135deg,#faf8ff,#fff 52%); }
+.post-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.post-author { display: flex; min-width: 0; align-items: center; gap: 11px; }
+.post-author > span { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 12px; background: #eef2ff; color: var(--primary); font-weight: 900; }
+.post-author > div { display: grid; min-width: 0; gap: 4px; }
+.post-author strong { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; }
+.post-author small,.post-edited { color: var(--muted); font-size: 11px; }
+.post-actions { display: flex; gap: 4px; }
+.post-actions button { border: 0; border-radius: 8px; padding: 6px 8px; background: transparent; color: #64748b; font-size: 11px; font-weight: 800; }
+.post-actions button:hover { background: #f1f5f9; color: var(--primary); }
+.post-actions button.danger:hover { background: #fff1f2; color: var(--danger); }
+.post-title-line { display: flex; align-items: center; gap: 8px; margin-top: 17px; }
+.post-title-line > span { flex: none; border-radius: 999px; padding: 4px 8px; background: #ede9fe; color: #6d28d9; font-size: 10px; font-weight: 900; }
+.post-title-line h2 { margin: 0; overflow-wrap: anywhere; font-size: 18px; letter-spacing: -.02em; }
+.post-content { margin: 10px 0 0; color: #334155; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; white-space: pre-wrap; }
+.post-edited { display: block; margin-top: 10px; }
+.posts-error { margin-bottom: 14px; border: 1px solid #fecaca; border-radius: 11px; padding: 11px 13px; background: #fff1f2; color: #b91c1c; font-size: 13px; font-weight: 700; }
+.posts-empty { min-height: 300px; }
+.posts-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 20px; }
+.posts-pagination span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.posts-pagination button:disabled { cursor: not-allowed; opacity: .45; }
+.post-form { display: grid; gap: 16px; }
+.post-form label { display: grid; gap: 7px; color: #475569; font-size: 13px; font-weight: 800; }
+.post-form input,.post-form textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 11px 12px; background: #fff; color: var(--ink); outline: none; resize: vertical; }
+.post-form input:focus,.post-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #4f46e51c; }
+.post-form .notice-toggle { display: flex; align-items: center; gap: 8px; width: max-content; }
+.post-form .notice-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); box-shadow: none; }
+.post-delete-confirm { width: auto; min-width: 84px; }
 .account-user-controls { display: flex; align-items: center; gap: 12px; }
 .account-user-controls select { width: 132px; min-height: 38px; padding: 7px 10px; font-size: 12px; }
 .account-user-controls .last-seen { width: 78px; text-align: right; }
@@ -324,6 +358,13 @@
   .account-user-controls .last-seen { width: auto; }
   .account-logout-row,.danger-zone-content { align-items: flex-start; flex-direction: column; }
   .account-logout-row button,.danger-zone-content button { width: 100%; }
+  .topbar nav button { padding-inline: 12px; font-size: 12px; }
+  .posts-heading { align-items: flex-start; gap: 16px; }
+  .posts-heading .primary { flex: none; padding-inline: 11px; }
+  .post-card { padding: 17px 16px; }
+  .post-card > header { gap: 10px; }
+  .post-title-line h2 { font-size: 16px; }
+  .post-content { font-size: 13px; }
 }
 
 /* Restrained motion and state feedback */

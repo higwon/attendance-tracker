@@ -20,3 +20,17 @@ export type User = {
   profile_photo: string | null;
   bio: string;
 };
+
+export type Post = {
+  id: string;
+  author_id: string;
+  title: string;
+  content: string;
+  is_notice: number;
+  created_at: string;
+  updated_at: string;
+  author_username: string;
+  author_display_name: string;
+  author_profile_photo: string | null;
+  author_role: "user" | "admin";
+};

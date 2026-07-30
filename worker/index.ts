@@ -200,6 +200,75 @@ api.delete("/attendance/:date", requireAuth, async (c) => {
   return c.json({ ok: true });
 });
 
+const postInput = z.object({
+  title: z.string().trim().min(1).max(100),
+  content: z.string().trim().min(1).max(5_000),
+  isNotice: z.boolean().default(false),
+});
+
+api.get("/posts", requireAuth, async (c) => {
+  const requestedPage = Number.parseInt(c.req.query("page") ?? "1", 10);
+  const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : 1;
+  const pageSize = 20;
+  const offset = (page - 1) * pageSize;
+  const [posts, count] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT p.id, p.author_id, p.title, p.content, p.is_notice, p.created_at, p.updated_at,
+              u.username AS author_username, u.display_name AS author_display_name,
+              u.profile_photo AS author_profile_photo, u.role AS author_role
+       FROM posts p JOIN users u ON u.id = p.author_id
+       ORDER BY p.is_notice DESC, p.created_at DESC
+       LIMIT ? OFFSET ?`,
+    ).bind(pageSize, offset).all(),
+    c.env.DB.prepare("SELECT COUNT(*) AS total FROM posts").first<{ total: number }>(),
+  ]);
+  return c.json({ items: posts.results, total: count?.total ?? 0, page, pageSize });
+});
+
+api.post("/posts", requireAuth, zValidator("json", postInput), async (c) => {
+  const input = c.req.valid("json");
+  const user = c.get("user");
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO posts (id, author_id, title, content, is_notice, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    crypto.randomUUID(), user.id, input.title, input.content,
+    user.role === "admin" && input.isNotice ? 1 : 0, now, now,
+  ).run();
+  return c.json({ ok: true }, 201);
+});
+
+api.patch("/posts/:id", requireAuth, zValidator("json", postInput), async (c) => {
+  const input = c.req.valid("json");
+  const user = c.get("user");
+  const post = await c.env.DB.prepare("SELECT author_id FROM posts WHERE id = ?")
+    .bind(c.req.param("id")).first<{ author_id: string }>();
+  if (!post) return c.json({ message: "게시글을 찾을 수 없습니다." }, 404);
+  if (post.author_id !== user.id && user.role !== "admin") {
+    return c.json({ message: "게시글을 수정할 권한이 없습니다." }, 403);
+  }
+  await c.env.DB.prepare(
+    "UPDATE posts SET title = ?, content = ?, is_notice = ?, updated_at = ? WHERE id = ?",
+  ).bind(
+    input.title, input.content, user.role === "admin" && input.isNotice ? 1 : 0,
+    new Date().toISOString(), c.req.param("id"),
+  ).run();
+  return c.json({ ok: true });
+});
+
+api.delete("/posts/:id", requireAuth, async (c) => {
+  const user = c.get("user");
+  const post = await c.env.DB.prepare("SELECT author_id FROM posts WHERE id = ?")
+    .bind(c.req.param("id")).first<{ author_id: string }>();
+  if (!post) return c.json({ message: "게시글을 찾을 수 없습니다." }, 404);
+  if (post.author_id !== user.id && user.role !== "admin") {
+    return c.json({ message: "게시글을 삭제할 권한이 없습니다." }, 403);
+  }
+  await c.env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(c.req.param("id")).run();
+  return c.json({ ok: true });
+});
+
 api.get("/users", requireAuth, async (c) => {
   const users = await c.env.DB.prepare(
     "SELECT id, username, display_name, profile_photo, bio, role FROM users WHERE is_active = 1 ORDER BY display_name",

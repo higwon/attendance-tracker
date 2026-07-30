@@ -1,4 +1,4 @@
-import type { Attendance, User } from "./types";
+import type { Attendance, Post, User } from "./types";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${url}`, {
@@ -46,4 +46,11 @@ export const api = {
   adminUsers: () => request<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>("/admin/users"),
   updateUser: (id: string, value: { role: "user" | "admin" }) =>
     request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(value) }),
+  posts: (page: number) => request<{ items: Post[]; total: number; page: number; pageSize: number }>(`/posts?page=${page}`),
+  savePost: (value: { id?: string; title: string; content: string; isNotice: boolean }) =>
+    request(value.id ? `/posts/${value.id}` : "/posts", {
+      method: value.id ? "PATCH" : "POST",
+      body: JSON.stringify(value),
+    }),
+  deletePost: (id: string) => request(`/posts/${id}`, { method: "DELETE" }),
 };
