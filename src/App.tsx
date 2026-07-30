@@ -1432,7 +1432,7 @@ function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isA
         <article className={`account-user-row ${managedUser.role === "admin" ? "is-admin" : ""}`} key={managedUser.id}>
           <div className="user-identity">
             <Avatar user={managedUser} />
-            <div><strong className="user-name-line">{managedUser.display_name}{managedUser.role === "admin" && <span className="admin-marker" title="관리자"><span aria-hidden="true">★</span> 관리자</span>}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
+            <div><strong className="user-name-line">{managedUser.display_name}{managedUser.id === currentUserId && <span className="self-marker">나</span>}{managedUser.role === "admin" && <span className="admin-marker" title="관리자"><span aria-hidden="true">★</span> 관리자</span>}</strong><small>@{managedUser.username}</small>{managedUser.bio && <p>{managedUser.bio}</p>}</div>
           </div>
           {isAdmin && <div className="account-user-controls"><select
             aria-label={`${managedUser.display_name} 권한`}

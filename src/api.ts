@@ -42,7 +42,7 @@ export const api = {
     request("/me/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
   deleteMe: (password: string) =>
     request("/me", { method: "DELETE", body: JSON.stringify({ password }) }),
-  directory: () => request<Array<Pick<User, "id" | "username" | "display_name" | "profile_photo" | "bio">>>("/users"),
+  directory: () => request<Array<Pick<User, "id" | "username" | "display_name" | "profile_photo" | "bio" | "role">>>("/users"),
   adminUsers: () => request<Array<User & { created_at: string; last_login_at: string | null; last_active_at: string | null }>>("/admin/users"),
   updateUser: (id: string, value: { role: "user" | "admin" }) =>
     request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(value) }),

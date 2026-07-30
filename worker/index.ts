@@ -202,7 +202,7 @@ api.delete("/attendance/:date", requireAuth, async (c) => {
 
 api.get("/users", requireAuth, async (c) => {
   const users = await c.env.DB.prepare(
-    "SELECT id, username, display_name, profile_photo, bio FROM users WHERE is_active = 1 ORDER BY display_name",
+    "SELECT id, username, display_name, profile_photo, bio, role FROM users WHERE is_active = 1 ORDER BY display_name",
   ).all();
   return c.json(users.results);
 });
