@@ -49,11 +49,16 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (register && password !== passwordConfirm) {
+      setError("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -75,12 +80,13 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
         <h1>나의 출퇴근 기록</h1>
         <p>{register ? "계정을 만들고 근무 기록을 시작하세요." : "내 기록을 확인하려면 로그인하세요."}</p>
         <form onSubmit={submit}>
-          {register && <label>이름<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>}
-          <label>아이디<input value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
-          <label>비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {register && <label>닉네임<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>}
+          <label>아이디<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
+          <label>비밀번호<input type="password" autoComplete={register ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {register && <label>비밀번호 확인<input type="password" autoComplete="new-password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} required /></label>}
           <button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy}>{busy ? "처리 중…" : register ? "회원가입" : "로그인"}</button>
         </form>
-        <button className="auth-switch" onClick={() => { setRegister(!register); setError(""); }}>
+        <button className="auth-switch" onClick={() => { setRegister(!register); setPasswordConfirm(""); setError(""); }}>
           {register ? "이미 계정이 있어요 · 로그인" : "처음인가요? · 회원가입"}
         </button>
       </section>
@@ -628,7 +634,7 @@ export default function App() {
                 }} /></label>{profilePhoto && <button type="button" className="text-button" onClick={() => setProfilePhoto(null)}>삭제</button>}</div>
                 </div>
                 <div className="account-fields">
-                  <label>표시 이름<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
+                  <label>닉네임<input value={profileName} maxLength={30} onChange={(event) => setProfileName(event.target.value)} /></label>
                   <label>사용자 설명<textarea value={profileBio} maxLength={120} rows={3} placeholder="소속이나 담당 업무를 간단히 적어보세요." onChange={(event) => setProfileBio(event.target.value)} /></label>
                 </div>
                 <div className="account-form-actions"><button className={`primary ${profileSaveState === "saving" ? "is-loading" : ""} ${profileSaveState === "saved" ? "is-saved" : ""}`} disabled={busy}>{profileSaveState === "saving" ? "저장 중..." : profileSaveState === "saved" ? "✓ 저장됨" : "변경사항 저장"}</button></div>

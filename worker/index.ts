@@ -15,13 +15,24 @@ app.onError((error, c) => {
 });
 
 const credentials = z.object({
-  username: z.string().trim().min(4).max(40).regex(/^[a-zA-Z0-9._-]+$/),
-  password: z.string().min(1).max(72),
+  username: z.string().trim()
+    .min(4, "아이디는 4자 이상 입력해 주세요.")
+    .max(40, "아이디는 40자 이하로 입력해 주세요.")
+    .regex(/^[a-zA-Z0-9._-]+$/, "아이디는 영문, 숫자, 마침표, 밑줄, 하이픈만 사용할 수 있습니다."),
+  password: z.string()
+    .min(1, "비밀번호를 입력해 주세요.")
+    .max(72, "비밀번호는 72자 이하로 입력해 주세요."),
 });
 
 api.post("/auth/register", zValidator("json", credentials.extend({
-  displayName: z.string().trim().min(1).max(30),
-})), async (c) => {
+  displayName: z.string().trim()
+    .min(1, "닉네임을 입력해 주세요.")
+    .max(30, "닉네임은 30자 이하로 입력해 주세요."),
+}), (result, c) => {
+  if (!result.success) {
+    return c.json({ message: result.error.issues[0]?.message ?? "회원가입 정보를 확인해 주세요." }, 400);
+  }
+}), async (c) => {
   const input = c.req.valid("json");
   const count = await c.env.DB.prepare("SELECT COUNT(*) AS count FROM users").first<{ count: number }>();
   const { hash, salt } = await hashPassword(input.password);
