@@ -79,7 +79,7 @@ function Auth({ onSuccess }: { onSuccess: () => void }) {
         <span className="auth-logo">✓</span>
         <h1>나의 출퇴근 기록</h1>
         <p>{register ? "계정을 만들고 바로 시작하세요." : "내 기록을 확인하려면 로그인하세요."}</p>
-        {register && <aside className="signup-guide"><p>복잡한 비밀번호 규칙이나 별도의 가입 승인 없이 바로 이용할 수 있어요.</p><span><b aria-hidden="true">🔒</b> 비밀번호는 관리자도 확인할 수 없는 형태로 안전하게 저장됩니다.</span></aside>}
+        {register && <aside className="signup-guide"><p>복잡한 규칙 없이 가입 즉시 이용할 수 있어요.</p><span><b aria-hidden="true">🔒</b> 비밀번호는 관리자도 확인할 수 없는 형태로 안전하게 저장됩니다.</span></aside>}
         <form onSubmit={submit}>
           {register && <label>닉네임<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>}
           <label>아이디<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
