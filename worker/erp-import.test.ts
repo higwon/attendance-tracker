@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { erpPayloadSchema } from "./erp-import";
+import { erpPayloadSchema, formatImportValidationIssue } from "./erp-import";
 
 const record = {
   workDate: "2026-08-07", checkInTime: "08:57", checkOutTime: "18:12",
@@ -29,5 +29,15 @@ describe("ERP import contract", () => {
       { ...record, workDate: "2026-08-06", workType: "annual", checkInTime: null, checkOutTime: null, paidWorkHours: 7.5 },
       { ...record, workType: "half", checkInTime: "09:00", checkOutTime: "13:00", paidWorkHours: 4 },
     ])).success).toBe(true);
+  });
+
+  it("turns generic schema errors into actionable Korean field messages", () => {
+    const parsed = erpPayloadSchema.safeParse(payload([{ ...record, workType: "normal" }]));
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(formatImportValidationIssue(parsed.error.issues[0])).toBe(
+        "1번째 기록의 근무 유형(workType): work, annual, half, holiday 중 하나여야 합니다.",
+      );
+    }
   });
 });

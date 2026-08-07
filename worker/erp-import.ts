@@ -138,10 +138,57 @@ const commitSchema = requestSchema.extend({
   })).max(MAX_RECORDS).default([]),
 });
 
+const fieldLabels: Record<string, string> = {
+  version: "계약 버전(version)",
+  source: "데이터 출처(source)",
+  exportedAt: "내보낸 시각(exportedAt)",
+  records: "근태 기록(records)",
+  workDate: "근무 날짜(workDate)",
+  checkInTime: "출근 시간(checkInTime)",
+  checkOutTime: "퇴근 시간(checkOutTime)",
+  workType: "근무 유형(workType)",
+  paidWorkHours: "유급 인정시간(paidWorkHours)",
+  workItemName: "ERP 근무항목(workItemName)",
+  statusName: "ERP 상태(statusName)",
+  dayTypeName: "ERP 일자유형(dayTypeName)",
+  isHoliday: "공휴일 여부(isHoliday)",
+  conflicts: "충돌 처리 목록(conflicts)",
+  resolution: "충돌 처리 방식(resolution)",
+};
+
+export function formatImportValidationIssue(issue: any) {
+  const path = Array.isArray(issue.path) ? issue.path : [];
+  const recordIndex = path.findIndex((part: unknown) => part === "records");
+  const index = recordIndex >= 0 && typeof path[recordIndex + 1] === "number"
+    ? Number(path[recordIndex + 1])
+    : null;
+  const field = String(path.at(-1) ?? "payload");
+  const location = index === null
+    ? (fieldLabels[field] ?? field)
+    : `${index + 1}번째 기록의 ${fieldLabels[field] ?? field}`;
+
+  if (issue.code === "custom" && issue.message && issue.message !== "Invalid input") {
+    return `${location}: ${issue.message}`;
+  }
+  if (field === "workType") return `${location}: work, annual, half, holiday 중 하나여야 합니다.`;
+  if (field === "version") return `${location}: 숫자 1이어야 합니다.`;
+  if (field === "source") return `${location}: park-erp여야 합니다.`;
+  if (field === "isHoliday") return `${location}: true 또는 false여야 합니다.`;
+  if (field === "paidWorkHours") return `${location}: 0~8 사이의 숫자여야 합니다.`;
+  if (field === "checkInTime" || field === "checkOutTime") return `${location}: HH:mm 형식의 시간 또는 null이어야 합니다.`;
+  if (["workItemName", "statusName", "dayTypeName"].includes(field)) return `${location}: 문자열 또는 null이어야 합니다.`;
+  if (field === "exportedAt") return `${location}: ISO 8601 날짜·시간 형식이어야 합니다.`;
+  if (field === "records") return `${location}: 1~${MAX_RECORDS}건의 배열이어야 합니다.`;
+  return `${location}: 값이 누락되었거나 형식이 올바르지 않습니다.`;
+}
+
 const validationFailure = (result: any, c: any) => {
   if (result.success) return;
+  const details = (result.error?.issues ?? []).slice(0, 5).map(formatImportValidationIssue);
   return c.json({
-    message: result.error?.issues[0]?.message ?? "ERP 근태 데이터 형식을 확인해 주세요.",
+    message: details[0] ?? "ERP 근태 데이터 형식을 확인해 주세요.",
+    code: "ERP_IMPORT_VALIDATION_FAILED",
+    details,
   }, 400);
 };
 
