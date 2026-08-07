@@ -138,8 +138,8 @@ export function ErpImportPage({ user }: { user: User }) {
         {preview && !result && <div className="erp-import-preview">
           <div className="erp-import-count"><strong>ERP 근태 기록 {preview.items.length}건</strong><span>저장 전에 변경 내용을 확인해 주세요.</span></div>
           <div className="erp-import-summary">
-            <span className={preview.summary.create === 0 ? "is-zero" : ""}><small>신규</small><b>{preview.summary.create}건</b></span>
-            <span className={preview.summary.update === 0 ? "is-zero" : ""}><small>업데이트</small><b>{preview.summary.update}건</b></span>
+            <span className={preview.summary.create === 0 ? "is-zero" : "has-create"}><small>신규</small><b>{preview.summary.create}건</b></span>
+            <span className={preview.summary.update === 0 ? "is-zero" : "has-update"}><small>업데이트</small><b>{preview.summary.update}건</b></span>
             <span className={preview.summary.unchanged === 0 ? "is-zero" : "has-unchanged"}><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
             <span className={preview.summary.conflict ? "has-conflict" : "is-zero"}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
           </div>
@@ -156,8 +156,8 @@ export function ErpImportPage({ user }: { user: User }) {
                 })}</b></span>}
                 <span><small>ERP 기록</small><b>{formatWorkRecord(item.incoming)}</b></span>
               </div>}
-              {item.action === "conflict" && <label>처리
-                <select value={resolutions[item.workDate] ?? "keep"} onChange={(event) => setResolutions({ ...resolutions, [item.workDate]: event.target.value as "keep" | "replace" })}>
+              {item.action === "conflict" && <label>
+                <select aria-label={`${item.workDate} 충돌 처리`} value={resolutions[item.workDate] ?? "keep"} onChange={(event) => setResolutions({ ...resolutions, [item.workDate]: event.target.value as "keep" | "replace" })}>
                   <option value="keep">기존 기록 유지</option><option value="replace">ERP 기록으로 교체</option>
                 </select>
               </label>}
