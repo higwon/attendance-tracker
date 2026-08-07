@@ -119,7 +119,10 @@ export function ErpImportPage({ user }: { user: User }) {
             <span><small>신규</small><b>{result.created}건</b></span><span><small>업데이트</small><b>{result.updated}건</b></span><span><small>변경 없음</small><b>{result.unchanged}건</b></span><span><small>충돌 유지</small><b>{result.conflicts}건</b></span>
           </div>
           <p>기존 출퇴근 기록 화면으로 돌아가면 최신 데이터가 자동으로 반영됩니다.</p>
-          <button className="primary" onClick={() => window.close()}>창 닫기</button>
+          <div className="erp-import-actions">
+            <button className="secondary" onClick={() => window.location.assign("/")}>근태 웹사이트 열기</button>
+            <button className="primary" onClick={() => window.close()}>창 닫기</button>
+          </div>
         </div>}
       </section>
     </main>

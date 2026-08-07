@@ -492,7 +492,7 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-import-actions button { min-width: 120px; }
 .erp-import-complete { display: grid; gap: 24px; padding-top: 24px; }
 .erp-import-complete p { margin: 0; color: #64748b; text-align: center; }
-.erp-import-complete > button { justify-self: end; min-width: 120px; }
+.erp-import-complete > .erp-import-actions { margin-top: 0; }
 @media (max-width: 600px) {
   .erp-import-page { align-items: start; padding: 0; background: #fff; }
   .erp-import-card { padding: 24px 18px; border: 0; border-radius: 0; box-shadow: none; }
