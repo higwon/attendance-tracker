@@ -94,11 +94,14 @@ async function recordHash(record: ErpAttendanceImportRecord) {
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-function sameCore(existing: ExistingAttendance, incoming: ErpAttendanceImportRecord) {
+export function hasSameUserMeaning(existing: ExistingAttendance, incoming: ErpAttendanceImportRecord) {
+  const existingPaidHours = existing.work_type === "work" ? Number(existing.paid_work_hours) : 0;
+  const incomingPaidHours = incoming.workType === "work" ? incoming.paidWorkHours : 0;
+
   return existing.check_in_time === incoming.checkInTime
     && existing.check_out_time === incoming.checkOutTime
     && existing.work_type === incoming.workType
-    && Number(existing.paid_work_hours) === incoming.paidWorkHours;
+    && existingPaidHours === incomingPaidHours;
 }
 
 async function previewRecords(db: D1Database, userId: string, payload: ErpAttendanceImportPayload) {
@@ -117,7 +120,7 @@ async function previewRecords(db: D1Database, userId: string, payload: ErpAttend
     if (existing) {
       const hash = await recordHash(incoming);
       if (existing.source === "erp") action = existing.external_record_hash === hash ? "unchanged" : "update";
-      else action = sameCore(existing, incoming) ? "unchanged" : "conflict";
+      else action = hasSameUserMeaning(existing, incoming) ? "unchanged" : "conflict";
     }
     return { workDate: incoming.workDate, action, incoming, existing, resolution: "keep" };
   }));

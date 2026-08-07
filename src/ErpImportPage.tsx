@@ -44,6 +44,12 @@ function formatWorkRecord(record: {
   return `${typeLabel} · 출퇴근 기록 없음`;
 }
 
+function isSimpleConflict(item: ErpImportPreview["items"][number]) {
+  return item.action === "conflict"
+    && item.existing?.work_type !== "work"
+    && item.incoming.workType !== "work";
+}
+
 export function ErpImportPage({ user }: { user: User }) {
   const [payload, setPayload] = useState<ErpAttendanceImportPayload | null>(null);
   const [preview, setPreview] = useState<ErpImportPreview | null>(null);
@@ -132,16 +138,16 @@ export function ErpImportPage({ user }: { user: User }) {
         {preview && !result && <div className="erp-import-preview">
           <div className="erp-import-count"><strong>ERP 근태 기록 {preview.items.length}건</strong><span>저장 전에 변경 내용을 확인해 주세요.</span></div>
           <div className="erp-import-summary">
-            <span><small>신규</small><b>{preview.summary.create}건</b></span>
-            <span><small>업데이트</small><b>{preview.summary.update}건</b></span>
-            <span><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
-            <span className={preview.summary.conflict ? "has-conflict" : ""}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
+            <span className={preview.summary.create === 0 ? "is-zero" : ""}><small>신규</small><b>{preview.summary.create}건</b></span>
+            <span className={preview.summary.update === 0 ? "is-zero" : ""}><small>업데이트</small><b>{preview.summary.update}건</b></span>
+            <span className={preview.summary.unchanged === 0 ? "is-zero" : "has-unchanged"}><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
+            <span className={preview.summary.conflict ? "has-conflict" : "is-zero"}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
           </div>
           <div className="erp-import-list">
             {preview.items.map((item) => <div className={`erp-import-row action-${item.action}`} key={item.workDate}>
               <div><strong>{item.workDate}</strong><span>{item.action === "conflict" ? "기존 기록과 ERP 기록이 다릅니다." : formatWorkRecord(item.incoming)}</span></div>
               {item.action !== "unchanged" && <i>{labelForAction(item.action)}</i>}
-              {item.action === "conflict" && <div className="erp-import-conflict-detail">
+              {item.action === "conflict" && <div className={`erp-import-conflict-detail ${isSimpleConflict(item) ? "is-compact" : ""}`}>
                 {item.existing && <span><small>기존 기록</small><b>{formatWorkRecord({
                   workType: item.existing.work_type,
                   checkInTime: item.existing.check_in_time,
@@ -157,7 +163,10 @@ export function ErpImportPage({ user }: { user: User }) {
               </label>}
             </div>)}
           </div>
-          <p className="erp-import-note">수동 기록 충돌 {preview.summary.conflict}건 중 {replacementCount}건을 ERP 기록으로 교체합니다. ERP에 없는 날짜는 삭제하지 않습니다.</p>
+          <div className="erp-import-note">
+            <p>충돌 {preview.summary.conflict}건은 기본적으로 기존 기록을 유지합니다. {replacementCount > 0 ? `선택한 ${replacementCount}건만 ERP 기록으로 교체됩니다.` : "선택한 항목만 ERP 기록으로 교체됩니다."}</p>
+            <span>ERP에 없는 날짜는 삭제하지 않습니다.</span>
+          </div>
           <div className="erp-import-actions"><button className="secondary" onClick={() => window.close()}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy} onClick={commit}>{busy ? "저장 중..." : "내 계정에 저장"}</button></div>
         </div>}
 

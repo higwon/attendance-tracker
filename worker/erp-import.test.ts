@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { erpPayloadSchema, formatImportValidationIssue } from "./erp-import";
+import { erpPayloadSchema, formatImportValidationIssue, hasSameUserMeaning } from "./erp-import";
 
 const record = {
   workDate: "2026-08-07", checkInTime: "08:57", checkOutTime: "18:12",
@@ -39,5 +39,21 @@ describe("ERP import contract", () => {
         "1번째 기록의 근무 유형(workType): work, annual, half, holiday 중 하나여야 합니다.",
       );
     }
+  });
+
+  it("treats manual leave defaults as the same user-visible record", () => {
+    const existing = {
+      id: "attendance-1", work_date: "2026-08-07", check_in_time: null, check_out_time: null,
+      work_type: "annual" as const, source: "manual" as const, paid_work_hours: 0, external_record_hash: null,
+    };
+    const incoming = {
+      ...record, checkInTime: null, checkOutTime: null, workType: "annual" as const, paidWorkHours: 8,
+    };
+
+    expect(hasSameUserMeaning(existing, incoming)).toBe(true);
+    expect(hasSameUserMeaning(
+      { ...existing, work_type: "work", check_in_time: "09:00", check_out_time: "18:00" },
+      { ...record, checkInTime: "09:00", checkOutTime: "18:00", paidWorkHours: 2 },
+    )).toBe(false);
   });
 });
