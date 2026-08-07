@@ -498,18 +498,18 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-import-row > i { padding: 5px 8px; border-radius: 999px; color: #4338ca; background: #eef2ff; font-size: 11px; font-style: normal; font-weight: 800; }
 .erp-import-row.action-create > i { color: #16745a; background: #e8f6f0; }
 .erp-import-row.action-update > i { color: #475569; background: #eef2f6; }
-.erp-import-row.action-unchanged > i { color: #64748b; background: #f1f3f5; }
+.erp-import-row.action-unchanged > i { color: #94a3b8; background: #f6f7f8; }
 .erp-import-row.action-conflict > i { color: #c2410c; background: #fff7ed; }
 .erp-import-row > .erp-import-conflict-detail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .erp-import-conflict-detail > label { position: relative; cursor: pointer; }
-.erp-import-conflict-detail input { position: absolute; top: 11px; right: 11px; margin: 0; accent-color: #6547e8; }
-.erp-import-conflict-detail label > span { display: grid; gap: 4px; padding: 10px 36px 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease; }
+.erp-import-conflict-detail input { position: absolute; top: 10px; right: 10px; width: 15px; height: 15px; margin: 0; accent-color: #5545e8; }
+.erp-import-conflict-detail label > span { display: grid; gap: 3px; padding: 8px 34px 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease; }
 .erp-import-conflict-detail > label:last-child > span { background: #fff7ed; }
-.erp-import-conflict-detail label:has(input:checked) > span { border-color: #6547e8; box-shadow: inset 0 0 0 1px #6547e8; }
+.erp-import-conflict-detail label:has(input:checked) > span { border-color: #5545e8; background: #f5f3ff; box-shadow: inset 0 0 0 1px #5545e8; }
 .erp-import-conflict-detail small { color: #64748b; font-size: 11px; font-weight: 700; }
 .erp-import-conflict-detail b { color: #334155; font-size: 12px; line-height: 1.45; }
 .erp-import-row > .erp-import-conflict-detail.is-compact { grid-template-columns: 1fr; gap: 4px; }
-.erp-import-conflict-detail.is-compact label > span { grid-template-columns: 52px 1fr; align-items: center; gap: 8px; padding: 7px 36px 7px 9px; background: transparent; }
+.erp-import-conflict-detail.is-compact label > span { grid-template-columns: 52px 1fr; align-items: center; gap: 8px; padding: 6px 34px 6px 8px; background: transparent; }
 .erp-import-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
 .erp-import-actions button { min-width: 120px; }
 .erp-import-complete { display: grid; gap: 24px; padding-top: 24px; }

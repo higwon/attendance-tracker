@@ -144,7 +144,7 @@ export function ErpImportPage({ user }: { user: User }) {
           <div className="erp-import-summary">
             <span className={preview.summary.create === 0 ? "is-zero" : "has-create"}><small>신규</small><b>{preview.summary.create}건</b></span>
             <span className={preview.summary.update === 0 ? "is-zero" : "has-update"}><small>업데이트</small><b>{preview.summary.update}건</b></span>
-            <span className={preview.summary.unchanged === 0 ? "is-zero" : "has-unchanged"}><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
+            <span className={preview.summary.unchanged === 0 ? "is-zero" : "has-unchanged"}><small>동일</small><b>{preview.summary.unchanged}건</b></span>
             <span className={preview.summary.conflict ? "has-conflict" : "is-zero"}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
           </div>
           {preview.summary.conflict > 0 && <div className="erp-import-bulk-resolution">
@@ -180,7 +180,7 @@ export function ErpImportPage({ user }: { user: User }) {
 
         {result && <div className="erp-import-complete">
           <div className="erp-import-summary">
-            <span><small>신규</small><b>{result.created}건</b></span><span><small>업데이트</small><b>{result.updated}건</b></span><span><small>변경 없음</small><b>{result.unchanged}건</b></span><span><small>충돌 유지</small><b>{result.conflicts}건</b></span>
+            <span><small>신규</small><b>{result.created}건</b></span><span><small>업데이트</small><b>{result.updated}건</b></span><span><small>동일</small><b>{result.unchanged}건</b></span><span><small>충돌 유지</small><b>{result.conflicts}건</b></span>
           </div>
           <p>기존 출퇴근 기록 화면으로 돌아가면 최신 데이터가 자동으로 반영됩니다.</p>
           <div className="erp-import-actions">
