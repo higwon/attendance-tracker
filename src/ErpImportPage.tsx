@@ -75,6 +75,16 @@ export function ErpImportPage({ user }: { user: User }) {
     }
   };
 
+  const openAttendanceSite = () => {
+    const siteWindow = window.open("/", "_blank");
+    if (siteWindow) {
+      siteWindow.opener = null;
+      window.close();
+      return;
+    }
+    window.location.assign("/");
+  };
+
   return (
     <main className="erp-import-page">
       <section className="erp-import-card page-transition">
@@ -120,7 +130,7 @@ export function ErpImportPage({ user }: { user: User }) {
           </div>
           <p>기존 출퇴근 기록 화면으로 돌아가면 최신 데이터가 자동으로 반영됩니다.</p>
           <div className="erp-import-actions">
-            <button className="secondary" onClick={() => window.location.assign("/")}>근태 웹사이트 열기</button>
+            <button className="secondary" onClick={openAttendanceSite}>근태 기록 확인하기</button>
             <button className="primary" onClick={() => window.close()}>창 닫기</button>
           </div>
         </div>}
