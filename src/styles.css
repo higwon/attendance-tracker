@@ -456,7 +456,7 @@ button.is-saved { border-color: #059669; background: #059669; }
   }
 }
 .erp-import-page { min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; background: var(--background, #f5f7fb); }
-.erp-import-card { display: flex; width: min(640px, 100%); max-height: 80vh; flex-direction: column; overflow: hidden; padding: 32px; border: 1px solid #e2e8f0; border-radius: 24px; background: #fff; box-shadow: 0 20px 50px rgba(51, 43, 116, .1); }
+.erp-import-card { display: flex; width: min(640px, 100%); max-height: min(86vh, 720px); flex-direction: column; overflow: hidden; padding: 28px; border: 1px solid #e2e8f0; border-radius: 24px; background: #fff; box-shadow: 0 20px 50px rgba(51, 43, 116, .1); }
 .erp-import-heading { display: flex; align-items: center; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #eef0f5; }
 .erp-import-heading p { margin: 0 0 4px; color: #6547e8; font-size: 13px; font-weight: 800; }
 .erp-import-heading h1 { margin: 0; color: #111827; font-size: 24px; }
@@ -481,15 +481,21 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-import-summary .has-conflict b { color: #c2410c; }
 .erp-import-list { min-height: 120px; flex: 1; overflow: auto; margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 14px; }
 .erp-import-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 16px; padding: 14px 16px; border-bottom: 1px solid #eef0f5; }
+.erp-import-row.action-unchanged { grid-template-columns: 1fr; }
 .erp-import-row:last-child { border-bottom: 0; }
 .erp-import-row > div { display: grid; gap: 4px; }
 .erp-import-row > div span { color: #64748b; font-size: 12px; }
 .erp-import-row > i { padding: 5px 8px; border-radius: 999px; color: #4338ca; background: #eef2ff; font-size: 11px; font-style: normal; font-weight: 800; }
 .erp-import-row.action-conflict > i { color: #c2410c; background: #fff7ed; }
+.erp-import-row > .erp-import-conflict-detail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.erp-import-conflict-detail > span { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: #f8fafc; }
+.erp-import-conflict-detail > span:last-child { background: #fff7ed; }
+.erp-import-conflict-detail small { color: #64748b; font-size: 11px; font-weight: 700; }
+.erp-import-conflict-detail b { color: #334155; font-size: 12px; line-height: 1.45; }
 .erp-import-row > label { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; color: #64748b; font-size: 12px; font-weight: 700; }
 .erp-import-row select { height: 36px; padding: 0 10px; border: 1px solid #d9deea; border-radius: 9px; background: #fff; }
-.erp-import-note { color: #64748b; font-size: 12px; }
-.erp-import-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.erp-import-note { margin: 12px 0 0; color: #64748b; font-size: 12px; }
+.erp-import-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
 .erp-import-actions button { min-width: 120px; }
 .erp-import-complete { display: grid; gap: 24px; padding-top: 24px; }
 .erp-import-complete p { margin: 0; color: #64748b; text-align: center; }
@@ -500,5 +506,6 @@ button.is-saved { border-color: #059669; background: #059669; }
   .erp-import-list { max-height: 42vh; }
   .erp-import-summary { grid-template-columns: repeat(2, 1fr); }
   .erp-import-count { flex-direction: column; gap: 4px; }
+  .erp-import-row > .erp-import-conflict-detail { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .erp-spinner { animation: none; } }

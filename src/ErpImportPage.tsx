@@ -16,6 +16,34 @@ function labelForAction(action: ErpImportPreview["items"][number]["action"]) {
   return { create: "신규", update: "업데이트", unchanged: "변경 없음", conflict: "충돌" }[action];
 }
 
+function formatWorkRecord(record: {
+  workType: "work" | "annual" | "half" | "holiday";
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  paidWorkHours: number;
+}) {
+  const typeLabel = record.workType === "holiday"
+    ? "공휴일"
+    : record.workType === "annual"
+      ? "연차"
+      : record.workType === "half"
+        ? "반차"
+        : record.paidWorkHours > 0
+          ? `시간 연차 ${record.paidWorkHours}시간`
+          : "근무";
+  const timeLabel = record.checkInTime && record.checkOutTime
+    ? `${record.checkInTime} ~ ${record.checkOutTime}`
+    : record.checkInTime
+      ? `출근 ${record.checkInTime}`
+      : record.checkOutTime
+        ? `퇴근 ${record.checkOutTime}`
+        : null;
+
+  if (timeLabel) return `${typeLabel} · ${timeLabel}`;
+  if (record.workType === "holiday" || record.workType === "annual") return typeLabel;
+  return `${typeLabel} · 출퇴근 기록 없음`;
+}
+
 export function ErpImportPage({ user }: { user: User }) {
   const [payload, setPayload] = useState<ErpAttendanceImportPayload | null>(null);
   const [preview, setPreview] = useState<ErpImportPreview | null>(null);
@@ -105,17 +133,26 @@ export function ErpImportPage({ user }: { user: User }) {
           <div className="erp-import-count"><strong>ERP 근태 기록 {preview.items.length}건</strong><span>저장 전에 변경 내용을 확인해 주세요.</span></div>
           <div className="erp-import-summary">
             <span><small>신규</small><b>{preview.summary.create}건</b></span>
-            <span><small>업데이트 예정</small><b>{preview.summary.update}건</b></span>
+            <span><small>업데이트</small><b>{preview.summary.update}건</b></span>
             <span><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
             <span className={preview.summary.conflict ? "has-conflict" : ""}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
           </div>
           <div className="erp-import-list">
             {preview.items.map((item) => <div className={`erp-import-row action-${item.action}`} key={item.workDate}>
-              <div><strong>{item.workDate}</strong><span>{item.incoming.workItemName || item.incoming.workType} · {item.incoming.checkInTime ?? "--:--"}–{item.incoming.checkOutTime ?? "--:--"}{item.incoming.paidWorkHours > 0 ? ` · 유급 ${item.incoming.paidWorkHours}시간` : ""}</span></div>
-              <i>{labelForAction(item.action)}</i>
+              <div><strong>{item.workDate}</strong><span>{item.action === "conflict" ? "기존 기록과 ERP 기록이 다릅니다." : formatWorkRecord(item.incoming)}</span></div>
+              {item.action !== "unchanged" && <i>{labelForAction(item.action)}</i>}
+              {item.action === "conflict" && <div className="erp-import-conflict-detail">
+                {item.existing && <span><small>기존 기록</small><b>{formatWorkRecord({
+                  workType: item.existing.work_type,
+                  checkInTime: item.existing.check_in_time,
+                  checkOutTime: item.existing.check_out_time,
+                  paidWorkHours: Number(item.existing.paid_work_hours) || 0,
+                })}</b></span>}
+                <span><small>ERP 기록</small><b>{formatWorkRecord(item.incoming)}</b></span>
+              </div>}
               {item.action === "conflict" && <label>처리
                 <select value={resolutions[item.workDate] ?? "keep"} onChange={(event) => setResolutions({ ...resolutions, [item.workDate]: event.target.value as "keep" | "replace" })}>
-                  <option value="keep">기존 수동 기록 유지</option><option value="replace">ERP 기록으로 교체</option>
+                  <option value="keep">기존 기록 유지</option><option value="replace">ERP 기록으로 교체</option>
                 </select>
               </label>}
             </div>)}
