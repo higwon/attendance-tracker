@@ -101,7 +101,7 @@ export function ErpImportPage({ user }: { user: User }) {
 
         {error && <div className="erp-import-error" role="alert"><strong>가져오지 못했습니다.</strong><span>{error}</span></div>}
 
-        {preview && !result && <>
+        {preview && !result && <div className="erp-import-preview">
           <div className="erp-import-count"><strong>ERP 근태 기록 {preview.items.length}건</strong><span>저장 전에 변경 내용을 확인해 주세요.</span></div>
           <div className="erp-import-summary">
             <span><small>신규</small><b>{preview.summary.create}건</b></span>
@@ -122,7 +122,7 @@ export function ErpImportPage({ user }: { user: User }) {
           </div>
           <p className="erp-import-note">수동 기록 충돌 {preview.summary.conflict}건 중 {replacementCount}건을 ERP 기록으로 교체합니다. ERP에 없는 날짜는 삭제하지 않습니다.</p>
           <div className="erp-import-actions"><button className="secondary" onClick={() => window.close()}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy} onClick={commit}>{busy ? "저장 중..." : "내 계정에 저장"}</button></div>
-        </>}
+        </div>}
 
         {result && <div className="erp-import-complete">
           <div className="erp-import-summary">

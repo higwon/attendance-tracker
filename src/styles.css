@@ -456,7 +456,7 @@ button.is-saved { border-color: #059669; background: #059669; }
   }
 }
 .erp-import-page { min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; background: var(--background, #f5f7fb); }
-.erp-import-card { width: min(760px, 100%); padding: 32px; border: 1px solid #e2e8f0; border-radius: 24px; background: #fff; box-shadow: 0 20px 50px rgba(51, 43, 116, .1); }
+.erp-import-card { display: flex; width: min(640px, 100%); max-height: 80vh; flex-direction: column; overflow: hidden; padding: 32px; border: 1px solid #e2e8f0; border-radius: 24px; background: #fff; box-shadow: 0 20px 50px rgba(51, 43, 116, .1); }
 .erp-import-heading { display: flex; align-items: center; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #eef0f5; }
 .erp-import-heading p { margin: 0 0 4px; color: #6547e8; font-size: 13px; font-weight: 800; }
 .erp-import-heading h1 { margin: 0; color: #111827; font-size: 24px; }
@@ -470,6 +470,7 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-spinner { animation: erp-spin .8s linear infinite; }
 @keyframes erp-spin { to { transform: rotate(360deg); } }
 .erp-import-error { display: grid; gap: 4px; margin: 20px 0; padding: 14px 16px; border-radius: 12px; color: #b91c1c; background: #fef2f2; }
+.erp-import-preview { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .erp-import-count { display: flex; justify-content: space-between; gap: 16px; margin: 24px 0 14px; }
 .erp-import-count span { color: #64748b; font-size: 13px; }
 .erp-import-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -478,7 +479,7 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-import-summary b { color: #312e81; font-size: 20px; }
 .erp-import-summary .has-conflict { background: #fff7ed; }
 .erp-import-summary .has-conflict b { color: #c2410c; }
-.erp-import-list { max-height: 330px; overflow: auto; margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 14px; }
+.erp-import-list { min-height: 120px; flex: 1; overflow: auto; margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 14px; }
 .erp-import-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 16px; padding: 14px 16px; border-bottom: 1px solid #eef0f5; }
 .erp-import-row:last-child { border-bottom: 0; }
 .erp-import-row > div { display: grid; gap: 4px; }
@@ -495,7 +496,8 @@ button.is-saved { border-color: #059669; background: #059669; }
 .erp-import-complete > .erp-import-actions { margin-top: 0; }
 @media (max-width: 600px) {
   .erp-import-page { align-items: start; padding: 0; background: #fff; }
-  .erp-import-card { padding: 24px 18px; border: 0; border-radius: 0; box-shadow: none; }
+  .erp-import-card { max-height: none; overflow: visible; padding: 24px 18px; border: 0; border-radius: 0; box-shadow: none; }
+  .erp-import-list { max-height: 42vh; }
   .erp-import-summary { grid-template-columns: repeat(2, 1fr); }
   .erp-import-count { flex-direction: column; gap: 4px; }
 }
