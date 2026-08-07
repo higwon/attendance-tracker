@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Download, LoaderCircle, ShieldCheck } from "lucide-react";
 import { api } from "./api";
 import type { ErpAttendanceImportPayload, ErpImportPreview, User } from "./types";
@@ -13,7 +13,7 @@ function sendToOpener(message: object) {
 }
 
 function labelForAction(action: ErpImportPreview["items"][number]["action"]) {
-  return { create: "신규", update: "업데이트", unchanged: "변경 없음", conflict: "충돌" }[action];
+  return { create: "신규", update: "업데이트", unchanged: "동일", conflict: "충돌" }[action];
 }
 
 function formatWorkRecord(record: {
@@ -87,10 +87,14 @@ export function ErpImportPage({ user }: { user: User }) {
     return () => window.removeEventListener("message", receive);
   }, []);
 
-  const replacementCount = useMemo(
-    () => Object.values(resolutions).filter((resolution) => resolution === "replace").length,
-    [resolutions],
-  );
+  const applyAllConflicts = (resolution: "keep" | "replace") => {
+    if (!preview) return;
+    setResolutions(Object.fromEntries(
+      preview.items
+        .filter((item) => item.action === "conflict")
+        .map((item) => [item.workDate, resolution]),
+    ));
+  };
 
   const commit = async () => {
     if (!payload) return;
@@ -143,29 +147,33 @@ export function ErpImportPage({ user }: { user: User }) {
             <span className={preview.summary.unchanged === 0 ? "is-zero" : "has-unchanged"}><small>변경 없음</small><b>{preview.summary.unchanged}건</b></span>
             <span className={preview.summary.conflict ? "has-conflict" : "is-zero"}><small>충돌</small><b>{preview.summary.conflict}건</b></span>
           </div>
+          {preview.summary.conflict > 0 && <div className="erp-import-bulk-resolution">
+            <div><strong>충돌 항목 일괄 적용</strong><span>적용 후 각 항목에서 개별 변경할 수 있습니다.</span></div>
+            <div>
+              <button type="button" className="secondary" onClick={() => applyAllConflicts("keep")}>모두 기존 기록 유지</button>
+              <button type="button" className="secondary" onClick={() => applyAllConflicts("replace")}>모두 ERP로 갱신</button>
+            </div>
+          </div>}
           <div className="erp-import-list">
             {preview.items.map((item) => <div className={`erp-import-row action-${item.action}`} key={item.workDate}>
               <div><strong>{item.workDate}</strong><span>{item.action === "conflict" ? "기존 기록과 ERP 기록이 다릅니다." : formatWorkRecord(item.incoming)}</span></div>
-              {item.action !== "unchanged" && <i>{labelForAction(item.action)}</i>}
+              <i>{labelForAction(item.action)}</i>
               {item.action === "conflict" && <div className={`erp-import-conflict-detail ${isSimpleConflict(item) ? "is-compact" : ""}`}>
-                {item.existing && <span><small>기존 기록</small><b>{formatWorkRecord({
-                  workType: item.existing.work_type,
-                  checkInTime: item.existing.check_in_time,
-                  checkOutTime: item.existing.check_out_time,
-                  paidWorkHours: Number(item.existing.paid_work_hours) || 0,
-                })}</b></span>}
-                <span><small>ERP 기록</small><b>{formatWorkRecord(item.incoming)}</b></span>
+                {item.existing && <label>
+                  <input type="radio" name={`resolution-${item.workDate}`} value="keep" checked={(resolutions[item.workDate] ?? "keep") === "keep"} onChange={() => setResolutions({ ...resolutions, [item.workDate]: "keep" })} />
+                  <span><small>기존 기록</small><b>{formatWorkRecord({
+                    workType: item.existing.work_type,
+                    checkInTime: item.existing.check_in_time,
+                    checkOutTime: item.existing.check_out_time,
+                    paidWorkHours: Number(item.existing.paid_work_hours) || 0,
+                  })}</b></span>
+                </label>}
+                <label>
+                  <input type="radio" name={`resolution-${item.workDate}`} value="replace" checked={resolutions[item.workDate] === "replace"} onChange={() => setResolutions({ ...resolutions, [item.workDate]: "replace" })} />
+                  <span><small>ERP 기록</small><b>{formatWorkRecord(item.incoming)}</b></span>
+                </label>
               </div>}
-              {item.action === "conflict" && <label>
-                <select aria-label={`${item.workDate} 충돌 처리`} value={resolutions[item.workDate] ?? "keep"} onChange={(event) => setResolutions({ ...resolutions, [item.workDate]: event.target.value as "keep" | "replace" })}>
-                  <option value="keep">기존 기록 유지</option><option value="replace">ERP 기록으로 교체</option>
-                </select>
-              </label>}
             </div>)}
-          </div>
-          <div className="erp-import-note">
-            <p>충돌 {preview.summary.conflict}건은 기본적으로 기존 기록을 유지합니다. {replacementCount > 0 ? `선택한 ${replacementCount}건만 ERP 기록으로 교체됩니다.` : "선택한 항목만 ERP 기록으로 교체됩니다."}</p>
-            <span>ERP에 없는 날짜는 삭제하지 않습니다.</span>
           </div>
           <div className="erp-import-actions"><button className="secondary" onClick={() => window.close()}>취소</button><button className={`primary ${busy ? "is-loading" : ""}`} disabled={busy} onClick={commit}>{busy ? "저장 중..." : "내 계정에 저장"}</button></div>
         </div>}
