@@ -20,6 +20,10 @@ describe("deployed attendance calculations", () => {
     expect(workDuration(record("2026-07-06", { CheckOutTime: null }), "14:00")).toBe(240);
   });
 
+  it("adds ERP hourly paid leave to completed work records", () => {
+    expect(workDuration(record("2026-07-06", { PaidWorkHours: 2 }))).toBe(600);
+  });
+
   it("credits half days and excludes leave or holidays from worked time", () => {
     expect(workDuration(record("2026-07-06", { WorkType: "반차", CheckOutTime: "22:00" }))).toBe(240);
     expect(workDuration(record("2026-07-06", { WorkType: "연차" }))).toBe(0);

@@ -3,6 +3,7 @@ import { isHoliday } from "korean-holidays";
 import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 import { api } from "./api";
 import type { Attendance, Post, User, WorkType as ApiWorkType } from "./types";
+import { ErpImportPage } from "./ErpImportPage";
 
 export type WorkType = "출근" | "연차" | "반차" | "공휴일";
 type Tab = "today" | "records" | "stats" | "news" | "account";
@@ -16,6 +17,8 @@ export type RecordItem = {
   WorkType: WorkType;
   Memo: string;
   IsSample: number;
+  Source?: "manual" | "erp";
+  PaidWorkHours?: number;
 };
 
 type RecordForm = {
@@ -42,9 +45,11 @@ const toRecordItem = (record: Attendance): RecordItem => ({
   WorkType: toUiType(record.work_type),
   Memo: record.memo,
   IsSample: 0,
+  Source: record.source ?? "manual",
+  PaidWorkHours: record.paid_work_hours ?? 0,
 });
 
-function Auth({ onSuccess }: { onSuccess: () => void }) {
+export function Auth({ onSuccess }: { onSuccess: () => void }) {
   const [register, setRegister] = useState(false);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -135,10 +140,10 @@ export function workDuration(record?: RecordItem, now?: string) {
   const end = record.CheckOutTime ?? now;
   if (!end) return 0;
   const elapsed = Math.max(0, timeToMinutes(end) - timeToMinutes(record.CheckInTime));
-  if (record.CheckOutTime) return Math.max(0, elapsed - record.BreakMinutes);
+  if (record.CheckOutTime) return Math.max(0, elapsed - record.BreakMinutes) + Math.round((record.PaidWorkHours ?? 0) * 60);
 
   const liveBreakMinutes = Math.min(record.BreakMinutes, Math.max(0, elapsed - 240));
-  return Math.max(0, elapsed - liveBreakMinutes);
+  return Math.max(0, elapsed - liveBreakMinutes) + Math.round((record.PaidWorkHours ?? 0) * 60);
 }
 
 function formatDuration(value: number) {
@@ -400,6 +405,19 @@ export default function App() {
     if (user) void load();
   }, [user, load]);
 
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user, load]);
+
   const today = allRecords.find((record) => record.WorkDate === clock.date);
   const workMinutes = workDuration(today, clock.time);
   const weeklySummary = useMemo(
@@ -477,6 +495,8 @@ export default function App() {
           WorkType: "출근" as WorkType,
           Memo: "",
           IsSample: 0,
+          Source: "manual" as const,
+          PaidWorkHours: 0,
         };
       await saveRecord({
         id: next.Id,
@@ -583,6 +603,8 @@ export default function App() {
 
   if (!mounted || authLoading) return <main className="app-shell loading-shell"><span>나의 출퇴근 기록을 불러오는 중…</span></main>;
   if (!user) return <Auth onSuccess={() => api.me().then((value) => { setUser(value); setProfileName(value.display_name); setProfilePhoto(value.profile_photo); setProfileBio(value.bio); })} />;
+
+  if (window.location.pathname === "/import/erp") return <ErpImportPage user={user} />;
 
   const editingRecord = form.id ? allRecords.find((record) => record.Id === form.id) : undefined;
 

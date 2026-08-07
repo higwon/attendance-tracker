@@ -1,4 +1,4 @@
-import type { Attendance, Post, User } from "./types";
+import type { Attendance, ErpAttendanceImportPayload, ErpImportPreview, Post, User } from "./types";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${url}`, {
@@ -36,6 +36,15 @@ export const api = {
     }),
   }),
   deleteRecord: (date: string) => request(`/attendance/${date}`, { method: "DELETE" }),
+  previewErpImport: (payload: ErpAttendanceImportPayload) => request<ErpImportPreview>("/attendance/import/preview", {
+    method: "POST",
+    body: JSON.stringify({ payload }),
+  }),
+  commitErpImport: (payload: ErpAttendanceImportPayload, conflicts: Array<{ workDate: string; resolution: "keep" | "replace" }>) =>
+    request<{ created: number; updated: number; unchanged: number; conflicts: number }>("/attendance/import/commit", {
+      method: "POST",
+      body: JSON.stringify({ payload, conflicts }),
+    }),
   updateMe: (displayName: string, profilePhoto: string | null, bio: string) =>
     request("/me", { method: "PATCH", body: JSON.stringify({ displayName, profilePhoto, bio }) }),
   changePassword: (currentPassword: string, newPassword: string) =>

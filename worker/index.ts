@@ -5,6 +5,7 @@ import { clearSession, createSession, hashPassword, requireAdmin, requireAuth, v
 import type { Bindings, Variables } from "./types";
 import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 import { isValidProfilePhoto } from "./profile-photo";
+import { erpImportApi } from "./erp-import";
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const api = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -157,7 +158,9 @@ api.get("/attendance", requireAuth, async (c) => {
   const from = c.req.query("from") ?? "0000-01-01";
   const to = c.req.query("to") ?? "9999-12-31";
   const result = await c.env.DB.prepare(
-    `SELECT id, work_date, check_in_time, check_out_time, break_minutes, work_type, memo
+    `SELECT id, work_date, check_in_time, check_out_time, break_minutes, work_type, memo,
+            source, paid_work_hours, imported_at, external_source, external_record_hash,
+            erp_work_item_name, erp_status_name, erp_day_type_name, erp_is_holiday
      FROM attendance WHERE user_id = ? AND work_date BETWEEN ? AND ? ORDER BY work_date`,
   ).bind(c.get("user").id, from, to).all();
   return c.json(result.results);
@@ -181,14 +184,24 @@ api.put("/attendance/:date", requireAuth, zValidator("json", attendanceInput), a
   const now = new Date().toISOString();
   const upsert = c.env.DB.prepare(
     `INSERT INTO attendance
-      (id, user_id, work_date, check_in_time, check_out_time, break_minutes, work_type, memo, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, user_id, work_date, check_in_time, check_out_time, break_minutes, work_type, memo,
+       created_at, updated_at, source, paid_work_hours)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 0)
      ON CONFLICT(user_id, work_date) DO UPDATE SET
       check_in_time = excluded.check_in_time,
       check_out_time = excluded.check_out_time,
       break_minutes = excluded.break_minutes,
       work_type = excluded.work_type,
       memo = excluded.memo,
+      source = 'manual',
+      paid_work_hours = 0,
+      imported_at = NULL,
+      external_source = NULL,
+      external_record_hash = NULL,
+      erp_work_item_name = NULL,
+      erp_status_name = NULL,
+      erp_day_type_name = NULL,
+      erp_is_holiday = NULL,
       updated_at = excluded.updated_at`,
   ).bind(
     crypto.randomUUID(), c.get("user").id, input.workDate, input.checkInTime, input.checkOutTime,
@@ -338,6 +351,7 @@ api.patch("/admin/users/:id", requireAuth, requireAdmin, zValidator("json", z.ob
   return c.json({ ok: true });
 });
 
+api.route("/attendance/import", erpImportApi);
 app.route("/api", api);
 app.get("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
