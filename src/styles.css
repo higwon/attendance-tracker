@@ -532,7 +532,7 @@ button.is-saved { border-color: #059669; background: #059669; }
 
 .tab-icon { display: none; width: 21px; height: 21px; stroke-width: 2; }
 
-@media (max-width: 620px) {
+@media (max-width: 900px) {
   .topbar nav {
     display: grid;
     grid-template-columns: repeat(5,minmax(0,1fr));
