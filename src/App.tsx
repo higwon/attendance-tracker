@@ -4,9 +4,18 @@ import { getBlockedWorkDateReason } from "../shared/work-date-policy";
 import { api } from "./api";
 import type { Attendance, Post, User, WorkType as ApiWorkType } from "./types";
 import { ErpImportPage } from "./ErpImportPage";
+import { CalendarDays, ChartNoAxesCombined, Home, MessageCircle, UserRound } from "lucide-react";
 
 export type WorkType = "출근" | "연차" | "반차" | "공휴일";
 type Tab = "today" | "records" | "stats" | "news" | "account";
+
+const tabItems = [
+  { key: "today", label: "오늘", icon: Home },
+  { key: "records", label: "기록", icon: CalendarDays },
+  { key: "stats", label: "통계", icon: ChartNoAxesCombined },
+  { key: "news", label: "소식", icon: MessageCircle },
+  { key: "account", label: "계정", icon: UserRound },
+] as const;
 
 export type RecordItem = {
   Id: string;
@@ -613,9 +622,10 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">✓</span>나의 출퇴근 기록</div>
         <nav aria-label="주 메뉴">
-          {(["today", "records", "stats", "news", "account"] as const).map((key) => (
-            <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-              {{ today: "오늘", records: "기록", stats: "통계", news: "소식", account: "계정" }[key]}
+          {tabItems.map(({ key, label, icon: Icon }) => (
+            <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}>
+              <Icon className="tab-icon" aria-hidden="true" />
+              <span>{label}</span>
             </button>
           ))}
         </nav>
