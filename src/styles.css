@@ -559,9 +559,13 @@ button.is-saved { border-color: #059669; background: #059669; }
     flex-direction: column;
     gap: 3px;
     padding: 5px 2px;
+    border: 0;
     border-radius: 12px;
+    appearance: none;
+    background: transparent;
     color: #64748b;
     font-size: 11px;
+    font-weight: 700;
     line-height: 1;
   }
   .mobile-bottom-nav button.active { color: var(--primary); background: #eef2ff; }
