@@ -621,7 +621,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">✓</span>나의 출퇴근 기록</div>
-        <nav aria-label="주 메뉴">
+        <nav className="desktop-nav" aria-label="주 메뉴">
           {tabItems.map(({ key, label, icon: Icon }) => (
             <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}>
               <Icon className="tab-icon" aria-hidden="true" />
@@ -636,6 +636,15 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <nav className="mobile-bottom-nav" aria-label="모바일 주 메뉴">
+        {tabItems.map(({ key, label, icon: Icon }) => (
+          <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}>
+            <Icon className="tab-icon" aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
 
       <div className="content"><div key={tab} className="page-transition">
         {tab === "today" && <TodayView clock={clock} today={today} records={allRecords} workMinutes={workMinutes} summary={weeklySummary} busy={busy} onAction={quickAction} onEdit={() => openForm(today)} />}
